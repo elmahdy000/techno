@@ -1,7 +1,8 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
+const nextConfig = {
   serverExternalPackages: ["@prisma/client"],
+  experimental: {
+    allowedDevOrigins: [".monkeycode-ai.live"],
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "**" },

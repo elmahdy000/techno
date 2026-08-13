@@ -426,6 +426,12 @@ const ar: Dictionary = {
     activeVendors: "بائعون نشطون",
     totalUsers: "إجمالي المستخدمين",
     grossMerchandise: "القيمة الإجمالية للبضائع",
+    reviews: "إدارة التقييمات",
+    defaultCommissionRate: "نسبة العمولة الافتراضية (%)",
+    vendorCommissionRates: "نسب عمولة البائعين",
+    overrideCommissionRate: "نسبة معدلة (%)",
+    currentCommission: "النسبة الحالية",
+    commissionHint: "حدد نسبة عمولة المنصة والنسب المخصصة لكل بائع.",
   },
   footer: {
     about: "حول",

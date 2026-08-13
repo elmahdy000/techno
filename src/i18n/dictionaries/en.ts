@@ -424,6 +424,12 @@ const en = {
     activeVendors: "Active vendors",
     totalUsers: "Total users",
     grossMerchandise: "Gross merchandise value",
+    reviews: "Review moderation",
+    defaultCommissionRate: "Default commission rate (%)",
+    vendorCommissionRates: "Vendor commission rates",
+    overrideCommissionRate: "Override rate (%)",
+    currentCommission: "Current rate",
+    commissionHint: "Set the platform-wide commission rate and per-vendor overrides.",
   },
   footer: {
     about: "About",

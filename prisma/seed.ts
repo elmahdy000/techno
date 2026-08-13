@@ -1241,7 +1241,7 @@ async function seedDemoData(
   const totals3 = computeOrderTotals(
     items3.map((i) => ({ unitPriceMinor: i.variant.price, quantity: i.qty })),
   );
-  await prisma.order.create({
+  const order3 = await prisma.order.create({
     data: {
       orderNumber: nextOrderNumber(),
       userId: customerId,
@@ -1258,8 +1258,43 @@ async function seedDemoData(
     },
   });
 
+  for (const i of items3) {
+    const commission = computeItemCommission(i.variant.price, i.qty, defaultRate);
+    await prisma.orderItem.create({
+      data: {
+        orderId: order3.id,
+        vendorId: i.product.vendorId,
+        productId: i.product.id,
+        variantId: i.variant.id,
+        productName: i.product.name,
+        variantName: i.variant.name,
+        sku: i.variant.sku,
+        imageUrl: i.product.images[0]?.url ?? null,
+        quantity: i.qty,
+        unitPrice: i.variant.price,
+        lineTotal: i.variant.price * i.qty,
+        commissionRate: commission.rate,
+        commissionAmount: commission.commissionAmount,
+        vendorNet: commission.vendorNet,
+      },
+    });
+    await prisma.product.update({
+      where: { id: i.product.id },
+      data: { soldCount: { increment: i.qty } },
+    });
+  }
+
   // ----- Reviews -----
-  const reviews = [
+  const reviews: Array<{
+    userId: string;
+    productId: string;
+    orderItemId?: string;
+    rating: number;
+    title: string;
+    body: string;
+    verified: boolean;
+    pending?: boolean;
+  }> = [
     {
       userId: customerId,
       productId: gpu.id,
@@ -1294,6 +1329,15 @@ async function seedDemoData(
       body: "Massive gains over my old CPU in games. Runs cool with a good cooler.",
       verified: false,
     },
+    {
+      userId: userIds["karim@example.com"],
+      productId: laptop.id,
+      rating: 3,
+      title: "Good but loud fans",
+      body: "Performance is great but the fans get very loud under load, and the keyboard gets warm.",
+      verified: false,
+      pending: true,
+    },
   ];
   for (const r of reviews) {
     const exists = await prisma.review.findUnique({
@@ -1308,7 +1352,7 @@ async function seedDemoData(
         rating: r.rating,
         title: r.title,
         body: r.body,
-        status: "PUBLISHED",
+        status: r.pending ? "PENDING" : "PUBLISHED",
         isVerifiedPurchase: r.verified,
       },
     });
@@ -1323,8 +1367,10 @@ async function seedDemoData(
 
   // ----- Vendor review response -----
   const firstReview = await prisma.review.findFirstOrThrow({ where: { productId: gpu.id } });
-  await prisma.reviewResponse.create({
-    data: {
+  await prisma.reviewResponse.upsert({
+    where: { reviewId: firstReview.id },
+    update: {},
+    create: {
       reviewId: firstReview.id,
       vendorId: vendor2,
       body: "Thank you! We are glad you are happy with the card. Happy gaming!",

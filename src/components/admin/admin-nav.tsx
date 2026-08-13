@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, Store, ShoppingBag, Banknote, Ticket, Settings } from "lucide-react";
+import { LayoutDashboard, Users, Store, ShoppingBag, Banknote, Ticket, Star, Settings } from "lucide-react";
 import { useI18n } from "@/i18n/client";
 import { link } from "@/lib/links";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,7 @@ export function AdminNav() {
     { href: "/admin/vendors", label: t.admin.vendors, icon: Store },
     { href: "/admin/orders", label: t.admin.orders, icon: ShoppingBag },
     { href: "/admin/withdrawals", label: t.admin.withdrawals, icon: Banknote },
+    { href: "/admin/reviews", label: t.admin.reviews, icon: Star },
     { href: "/admin/support", label: t.admin.support, icon: Ticket },
     { href: "/admin/commission", label: t.admin.commission, icon: Settings },
   ];
