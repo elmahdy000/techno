@@ -101,14 +101,14 @@ export default async function AdminTicketDetailPage({
                   fromAdmin ? "ms-auto bg-primary/5" : "me-auto bg-muted/40",
                 )}
               >
-                <p className="text-xs font-semibold">
+                <div className="flex items-center text-xs font-semibold">
                   {m.sender.name}
                   {m.senderRole !== "CUSTOMER" && (
                     <Badge variant="outline" className="ms-1 text-[9px]">
                       {m.senderRole}
                     </Badge>
                   )}
-                </p>
+                </div>
                 <p className="mt-1 whitespace-pre-line text-sm">{m.body}</p>
                 <p className="mt-1 text-[11px] text-muted-foreground">
                   {new Date(m.createdAt).toLocaleString(locale === "ar" ? "ar-EG" : "en-US")}
