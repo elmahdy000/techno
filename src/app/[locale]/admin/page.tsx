@@ -103,7 +103,7 @@ export default async function AdminOverviewPage({
                   </div>
                   <div className="text-end">
                     <p className="text-sm font-semibold">{formatMoney(o.total)}</p>
-                    <p className="text-xs text-muted-foreground">{statusBadge(o.status, t, "sm")}</p>
+                    <div className="text-xs text-muted-foreground">{statusBadge(o.status, t, "sm")}</div>
                   </div>
                 </li>
               ))}
