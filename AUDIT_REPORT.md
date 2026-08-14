@@ -88,6 +88,17 @@ Round 3 — locale + fulfillment + support coverage, **26/26 passed**
 - **Admin support tickets**: customer creates ticket → admin replies → thread + status verified ✓
 - **No console errors** ✓
 
+Round 4 — CRUD + config + account coverage, **35/35 passed**
+- **Vendor product CRUD**: create (Name/Brand + variant SKU/Name/Price/Stock) → edit → delete (confirm dialog) ✓
+- **Vendor inventory**: stock delta + reason adjustment → `RESTOCK` inventory log ✓
+- **Vendor commission + profile**: commission page renders; profile phone update ✓
+- **Admin users**: deactivate → reactivate karim ✓
+- **Admin vendors**: suspend → reactivate DigiParts ✓
+- **Admin commission**: default rate 7→8→7, per-vendor override set then cleared ✓
+- **Account**: add address (dialog), cart quantity increase/decrease/remove → empty state, notifications mark-all-read, category browsing (`/category/laptops`), settings save ✓
+- **PWA**: `/sw.js` + `/manifest.webmanifest` served 200; `navigator.serviceWorker` available ✓
+- **No console errors** ✓
+
 Test data was cleaned up after each run; the DB was returned to the 3-order seed state.
 
 ## Commits
