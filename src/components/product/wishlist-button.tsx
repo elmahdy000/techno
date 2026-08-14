@@ -32,8 +32,8 @@ export function WishlistButton({
       aria-label={optimistic ? t.common.removeFromWishlist : t.common.saveToWishlist}
       aria-pressed={optimistic}
       onClick={() => {
-        setOptimistic(!optimistic);
         startTransition(async () => {
+          setOptimistic(!optimistic);
           try {
             const res = await toggleWishlist(locale, productId);
             toast.success(res.added ? t.common.saved : t.common.removed);
