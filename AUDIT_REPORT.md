@@ -58,6 +58,7 @@ Full audit of the multi-vendor marketplace (Next.js 15 / React 19 / Prisma + Pos
 |---|----------|---------|--------------|
 | 5.1 | High | Invalid HTML in admin overview recent-orders: `statusBadge` (a `<div>`) nested inside a `<p>` → React hydration error | Wrapped in `<div>` — `e065554` |
 | 5.2 | Medium | `WishlistButton` called `setOptimistic` outside a transition → React warning | Wrapped optimistic update in `startTransition` — `5ef6d1a` |
+| 5.3 | High | Admin ticket detail thread rendered a `<Badge>` (`<div>`) inside a `<p>` → hydration error | Switched the sender row to a `<div>` — `3cc6432` |
 
 ## Verification
 
@@ -81,6 +82,12 @@ Round 2 — remaining flows, **17/17 passed**
 - **Wishlist / compare / search**: toggle + page render verified ✓
 - **No console errors** ✓
 
+Round 3 — locale + fulfillment + support coverage, **26/26 passed**
+- **Arabic-locale flows**: return request, withdrawal request, and review submission all completed end-to-end under `/ar` (RTL rendering, Arabic labels, Arabic admin moderation) ✓
+- **Vendor shipping**: CARD (simulated) checkout creates a PENDING shipment → vendor marks shipped (carrier + tracking) → delivered; PAID order settles wallet pending → available with `ORDER_CREDIT` ledger (NileTech 5,114,907 → 9,485,814) ✓
+- **Admin support tickets**: customer creates ticket → admin replies → thread + status verified ✓
+- **No console errors** ✓
+
 Test data was cleaned up after each run; the DB was returned to the 3-order seed state.
 
 ## Commits
@@ -88,5 +95,7 @@ Test data was cleaned up after each run; the DB was returned to the 3-order seed
 - `87ecb26` feat: complete marketplace audit fixes (143 files)
 - `e065554` fix(admin): fix hydration error from div nested in p tag
 - `5ef6d1a` fix(wishlist): wrap optimistic update in startTransition
+- `9e1165b` docs: add marketplace audit report
+- `3cc6432` fix(admin): fix hydration error from Badge nested in p tag
 
 All pushed to `origin/main` (branch now in sync).
