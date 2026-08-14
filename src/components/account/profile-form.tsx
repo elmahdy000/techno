@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { useI18n } from "@/i18n/client";
+import { getErrorMessage } from "@/i18n/errors";
 import { updateProfile } from "@/lib/actions/auth-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +30,7 @@ export function ProfileForm({
         await updateProfile(locale, { name: fullName, phone: phoneInput });
         toast.success(t.common.success);
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : t.common.error);
+        toast.error(getErrorMessage(err, t));
       }
     });
   }

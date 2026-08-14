@@ -1,15 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { link } from "@/lib/links";
-import { formatMoney } from "@/lib/money";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { statusBadge } from "@/components/order/status";
 
-export const metadata: Metadata = { title: "My Account" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "account") };
+}
 
 export default async function AccountPage({
   params,

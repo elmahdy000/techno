@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
 import { useI18n } from "@/i18n/client";
+import { getErrorMessage } from "@/i18n/errors";
 import { deleteProduct } from "@/lib/actions/vendor-actions";
-import { link } from "@/lib/links";
 import { Button } from "@/components/ui/button";
 
 export function DeleteProductButton({
@@ -34,7 +34,7 @@ export function DeleteProductButton({
             toast.success(t.vendor.productDeleted);
             router.refresh();
           } catch (err) {
-            toast.error(err instanceof Error ? err.message : t.common.error);
+            toast.error(getErrorMessage(err, t));
           }
         });
       }}

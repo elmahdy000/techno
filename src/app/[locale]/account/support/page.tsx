@@ -1,14 +1,20 @@
 import type { Metadata } from "next";
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { link } from "@/lib/links";
 import { NewTicketDialog } from "@/components/support/new-ticket-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
-export const metadata: Metadata = { title: "Support" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "accountSupport") };
+}
 
 const STATUS_KEY: Record<string, string> = {
   OPEN: "statusOpen",

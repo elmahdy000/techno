@@ -1,9 +1,16 @@
 import type { Metadata } from "next";
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { getCurrentUser } from "@/lib/session";
 import { ProfileForm } from "@/components/account/profile-form";
 
-export const metadata: Metadata = { title: "Settings" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "accountSettings") };
+}
 
 export default async function SettingsPage({
   params,

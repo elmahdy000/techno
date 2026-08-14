@@ -2,18 +2,25 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Package, Truck } from "lucide-react";
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { link } from "@/lib/links";
 import { formatMoney } from "@/lib/money";
-import { statusBadge, payStatusLabel } from "@/components/order/status";
+import { statusBadge, payStatusLabel, shippingStatusLabel } from "@/components/order/status";
 import { ReturnRequestDialog } from "@/components/order/return-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
-export const metadata: Metadata = { title: "Order details" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; id: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "accountOrderDetails") };
+}
 
 export default async function OrderDetailPage({
   params,
@@ -102,7 +109,7 @@ export default async function OrderDetailPage({
                     <p className="text-xs text-muted-foreground">
                       {i.variantName} · {i.sku} · {t.common.quantity}: {i.quantity}
                     </p>
-                    <p className="mt-1 text-sm font-semibold">{formatMoney(i.lineTotal)}</p>
+                    <p className="mt-1 text-sm font-semibold">{formatMoney(i.lineTotal, undefined, locale)}</p>
                   </div>
                   <div className="flex flex-col items-end gap-1 text-xs">
                     {i.shippingStatus && (
@@ -142,7 +149,7 @@ export default async function OrderDetailPage({
                 {order.shipments.map((s) => (
                   <div key={s.id} className="rounded-lg border p-3 text-sm">
                     <div className="flex items-center justify-between">
-                      <Badge variant="secondary">{s.status}</Badge>
+                      <Badge variant="secondary">{shippingStatusLabel(s.status, t)}</Badge>
                       {s.trackingNumber && (
                         <span className="text-muted-foreground">
                           {s.trackingCarrier ? `${s.trackingCarrier} · ` : ""}
@@ -218,26 +225,26 @@ export default async function OrderDetailPage({
             <CardContent className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t.common.subtotal}</span>
-                <span>{formatMoney(order.subtotal)}</span>
+                <span>{formatMoney(order.subtotal, undefined, locale)}</span>
               </div>
               {order.discount > 0 && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t.common.discount}</span>
-                  <span>-{formatMoney(order.discount)}</span>
+                  <span>-{formatMoney(order.discount, undefined, locale)}</span>
                 </div>
               )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t.common.shipping}</span>
-                <span>{order.shippingFee === 0 ? t.common.free : formatMoney(order.shippingFee)}</span>
+                <span>{order.shippingFee === 0 ? t.common.free : formatMoney(order.shippingFee, undefined, locale)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t.common.tax}</span>
-                <span>{formatMoney(order.taxAmount)}</span>
+                <span>{formatMoney(order.taxAmount, undefined, locale)}</span>
               </div>
               <Separator className="my-1" />
               <div className="flex justify-between font-bold">
                 <span>{t.order.totalPaid}</span>
-                <span>{formatMoney(order.total)}</span>
+                <span>{formatMoney(order.total, undefined, locale)}</span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">{t.order.paymentMethod}</span>

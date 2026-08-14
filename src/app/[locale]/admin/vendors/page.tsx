@@ -1,4 +1,4 @@
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { prisma } from "@/lib/prisma";
 import { formatMoney } from "@/lib/money";
 import { Badge } from "@/components/ui/badge";
@@ -12,8 +12,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { VendorActionButtons } from "@/components/admin/vendor-actions";
+import { vendorStatusLabel } from "@/components/order/status";
 
-export const metadata = { title: "Vendors" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "adminVendors") };
+}
 
 const STATUS_VARIANT: Record<string, "secondary" | "success" | "destructive" | "outline"> = {
   PENDING: "secondary",
@@ -43,19 +51,21 @@ export default async function AdminVendorsPage({
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">{t.admin.vendors}</h1>
-        <p className="text-sm text-muted-foreground">{vendors.length} vendors</p>
+        <p className="text-sm text-muted-foreground">
+          {t.admin.vendorsCount.replace("{count}", String(vendors.length))}
+        </p>
       </div>
 
       <Card>
         <CardContent className="p-0">
-          <Table>
+          <Table className="min-w-[720px]">
             <TableHeader>
               <TableRow>
-                <TableHead>Vendor</TableHead>
+                <TableHead>{t.common.vendor}</TableHead>
                 <TableHead>{t.common.email}</TableHead>
                 <TableHead>{t.admin.grossMerchandise}</TableHead>
                 <TableHead>{t.vendor.availableBalance}</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t.common.status}</TableHead>
                 <TableHead className="text-end">{t.common.edit}</TableHead>
               </TableRow>
             </TableHeader>
@@ -65,7 +75,8 @@ export default async function AdminVendorsPage({
                   <TableCell>
                     <p className="font-medium">{v.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {v._count.products} products · {v._count.orderItems} sales
+                      {t.admin.productsCount.replace("{count}", String(v._count.products))} ·{" "}
+                      {t.admin.salesCount.replace("{count}", String(v._count.orderItems))}
                     </p>
                   </TableCell>
                   <TableCell className="text-xs">{v.user.email}</TableCell>
@@ -78,7 +89,7 @@ export default async function AdminVendorsPage({
                     {formatMoney(v.wallet?.availableBalance ?? 0)}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={STATUS_VARIANT[v.status]}>{v.status}</Badge>
+                    <Badge variant={STATUS_VARIANT[v.status]}>{vendorStatusLabel(v.status, t)}</Badge>
                   </TableCell>
                   <TableCell className="text-end">
                     <VendorActionButtons locale={locale} vendorId={v.id} status={v.status} />

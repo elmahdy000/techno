@@ -55,15 +55,15 @@ export default async function VendorLayout({
   }
 
   return (
-    <div className="container grid gap-8 py-8 lg:grid-cols-[240px_1fr]">
-      <aside>
-        <div className="rounded-lg border p-4">
+    <div className="container grid gap-4 py-6 lg:grid-cols-[240px_1fr] lg:gap-8 lg:py-8">
+      <aside className="min-w-0">
+        <div className="hidden rounded-lg border p-4 lg:block">
           <p className="font-semibold">{vendor.name}</p>
           <div className="mt-2">
             <Badge variant="success">{t.vendor.statusApproved}</Badge>
           </div>
         </div>
-        <div className="mt-4">
+        <div className="lg:mt-4">
           <VendorNav />
         </div>
       </aside>

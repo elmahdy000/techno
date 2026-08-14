@@ -1,12 +1,19 @@
 import type { Metadata } from "next";
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { formatMoney } from "@/lib/money";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
-export const metadata: Metadata = { title: "Returns & Refunds" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "accountReturns") };
+}
 
 const RETURN_STATUS_KEY: Record<string, string> = {
   PENDING: "statusPending",
@@ -73,7 +80,7 @@ export default async function ReturnsPage({
                 </Badge>
                 {r.refund && r.refund.amount > 0 && (
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {t.returns.refundAmount}: {formatMoney(r.refund.amount)}
+                    {t.returns.refundAmount}: {formatMoney(r.refund.amount, undefined, locale)}
                   </p>
                 )}
               </div>

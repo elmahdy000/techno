@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useI18n } from "@/i18n/client";
+import { getErrorMessage } from "@/i18n/errors";
 import { createTicket } from "@/lib/actions/order-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +32,7 @@ const CATEGORIES = [
 
 export function NewTicketDialog({ locale }: { locale: string }) {
   const { t } = useI18n();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [subject, setSubject] = useState("");
@@ -48,8 +51,9 @@ export function NewTicketDialog({ locale }: { locale: string }) {
         setOpen(false);
         setSubject("");
         setMessage("");
+        router.refresh();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : t.common.error);
+        toast.error(getErrorMessage(err, t));
       }
     });
   }

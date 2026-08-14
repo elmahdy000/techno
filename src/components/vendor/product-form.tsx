@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus, X } from "lucide-react";
 import { useI18n } from "@/i18n/client";
+import { getErrorMessage } from "@/i18n/errors";
 import { saveProduct } from "@/lib/actions/vendor-actions";
 import { link, pickL } from "@/lib/links";
 import { Button } from "@/components/ui/button";
@@ -164,7 +165,7 @@ export function ProductForm({
         router.refresh();
         void res;
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : t.common.error);
+        toast.error(getErrorMessage(err, t));
       }
     });
   }
@@ -185,11 +186,11 @@ export function ProductForm({
                 required
                 value={form.name}
                 onChange={(e) => set("name", e.target.value)}
-                placeholder="e.g. ASUS ROG Strix G16"
+                placeholder={t.vendor.productNamePlaceholder}
               />
             </div>
             <div className="space-y-2">
-              <Label>{t.common.name} (عربي)</Label>
+              <Label>{t.vendor.nameInArabic}</Label>
               <Input
                 dir="rtl"
                 value={form.nameAr}
@@ -259,7 +260,7 @@ export function ProductForm({
               />
             </div>
             <div className="space-y-2">
-              <Label>{t.common.description} (عربي)</Label>
+              <Label>{t.vendor.descriptionInArabic}</Label>
               <Textarea
                 dir="rtl"
                 rows={3}
@@ -284,7 +285,7 @@ export function ProductForm({
               <Input
                 value={form.warranty}
                 onChange={(e) => set("warranty", e.target.value)}
-                placeholder="e.g. 2 years"
+                placeholder={t.vendor.warrantyPlaceholder}
               />
             </div>
             <div className="flex items-end gap-2 pb-1">
@@ -349,12 +350,12 @@ export function ProductForm({
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Name</Label>
+                  <Label className="text-xs">{t.common.name}</Label>
                   <Input
                     required
                     value={v.name}
                     onChange={(e) => setVariant(i, "name", e.target.value)}
-                    placeholder="e.g. 16GB / 512GB"
+                    placeholder={t.vendor.variantNamePlaceholder}
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -373,7 +374,7 @@ export function ProductForm({
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">
-                    {t.vendor.price} (قبل الخصم)
+                    {t.vendor.comparePrice}
                   </Label>
                   <Input
                     type="number"

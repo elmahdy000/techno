@@ -7,18 +7,22 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { checkPermission } from "@/lib/rbac";
 import { link } from "@/lib/links";
-import { debitWalletForWithdrawal } from "@/lib/wallet";
+import { debitWalletForWithdrawal, reverseVendorCredit } from "@/lib/wallet";
+import { percentOf } from "@/lib/money";
 
 async function requireAdmin(locale: string) {
   const user = await getCurrentUser();
   if (!user) redirect(link(locale, "/auth/login"));
+  if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+    throw new Error("adminAccessRequired");
+  }
   return user;
 }
 
 async function requireAdminPermission(locale: string, code: "vendors.manage" | "users.manage" | "withdrawals.manage" | "commission.manage" | "support.manage" | "review.moderate" | "order.admin_manage") {
   const user = await requireAdmin(locale);
   const ok = await checkPermission(user, code);
-  if (!ok) throw new Error("Admin access required");
+  if (!ok) throw new Error("adminAccessRequired");
   return user;
 }
 
@@ -37,9 +41,9 @@ export async function decideVendor(locale: string, input: z.infer<typeof vendorD
   const parsed = vendorDecisionSchema.parse(input);
 
   const vendor = await prisma.vendor.findUnique({ where: { id: parsed.vendorId } });
-  if (!vendor) throw new Error("Vendor not found");
+  if (!vendor) throw new Error("vendorNotFound");
 
-  const statusMap: Record<string, "APPROVED" | "REJECTED" | "SUSPENDED" | "APPROVED"> = {
+  const statusMap: Record<string, "APPROVED" | "REJECTED" | "SUSPENDED"> = {
     APPROVE: "APPROVED",
     REJECT: "REJECTED",
     SUSPEND: "SUSPENDED",
@@ -90,8 +94,19 @@ const userActionSchema = z.object({
 });
 
 export async function manageUser(locale: string, input: z.infer<typeof userActionSchema>) {
-  await requireAdminPermission(locale, "users.manage");
+  const actor = await requireAdminPermission(locale, "users.manage");
   const parsed = userActionSchema.parse(input);
+
+  const target = await prisma.user.findUnique({ where: { id: parsed.userId } });
+  if (!target) throw new Error("userNotFound");
+
+  if (parsed.action === "DEACTIVATE") {
+    if (target.id === actor.id) throw new Error("cannotDeactivateSelf");
+    if (target.role === "SUPER_ADMIN") throw new Error("cannotDeactivateSuperAdmin");
+    if (target.role === "ADMIN" && actor.role !== "SUPER_ADMIN") {
+      throw new Error("cannotDeactivateAdmin");
+    }
+  }
 
   await prisma.user.update({
     where: { id: parsed.userId },
@@ -160,19 +175,30 @@ export async function decideWithdrawal(locale: string, input: z.infer<typeof wit
     where: { id: parsed.withdrawalId },
     include: { vendor: true },
   });
-  if (!withdrawal) throw new Error("Withdrawal not found");
-  if (withdrawal.status !== "PENDING") throw new Error("Withdrawal already processed");
+  if (!withdrawal) throw new Error("withdrawalNotFound");
+  if (withdrawal.status !== "PENDING") throw new Error("withdrawalProcessed");
 
   if (parsed.action === "APPROVE") {
-    const res = await debitWalletForWithdrawal(
-      withdrawal.vendorId,
-      withdrawal.amount,
-      withdrawal.id,
-    );
-    if (!res.ok) throw new Error(res.error ?? "Insufficient balance");
-    await prisma.withdrawal.update({
-      where: { id: withdrawal.id },
-      data: { status: "PROCESSING", adminNote: parsed.note || null, processedAt: new Date() },
+    // Debit and status flip are atomic: if the wallet debit fails the
+    // withdrawal stays PENDING and nothing is lost. Concurrent approvals
+    // can only debit once thanks to the conditional balance guard.
+    await prisma.$transaction(async (tx) => {
+      const res = await debitWalletForWithdrawal(
+        withdrawal.vendorId,
+        withdrawal.amount,
+        withdrawal.id,
+        tx,
+      );
+      if (!res.ok) throw new Error(res.error ?? "insufficientBalance");
+      const updated = await tx.withdrawal.updateMany({
+        where: { id: withdrawal.id, status: "PENDING" },
+        data: {
+          status: "PROCESSING",
+          adminNote: parsed.note || null,
+          processedAt: new Date(),
+        },
+      });
+      if (updated.count === 0) throw new Error("withdrawalProcessed");
     });
   } else {
     await prisma.withdrawal.update({
@@ -210,7 +236,7 @@ export async function replyTicket(locale: string, input: z.infer<typeof ticketRe
   const parsed = ticketReplySchema.parse(input);
 
   const ticket = await prisma.supportTicket.findUnique({ where: { id: parsed.ticketId } });
-  if (!ticket) throw new Error("Ticket not found");
+  if (!ticket) throw new Error("ticketNotFound");
 
   await prisma.supportMessage.create({
     data: {
@@ -246,6 +272,126 @@ export async function moderateReview(locale: string, input: z.infer<typeof revie
     where: { id: parsed.reviewId },
     data: { status: parsed.action === "PUBLISH" ? "PUBLISHED" : "REJECTED" },
   });
+
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Returns & refunds
+// ---------------------------------------------------------------------------
+
+const returnDecisionSchema = z.object({
+  returnRequestId: z.string().min(1),
+  action: z.enum(["APPROVE", "REJECT"]),
+  note: z.string().max(500).optional().or(z.literal("")),
+});
+
+export async function decideReturn(locale: string, input: z.infer<typeof returnDecisionSchema>) {
+  const admin = await requireAdminPermission(locale, "order.admin_manage");
+  const parsed = returnDecisionSchema.parse(input);
+
+  const req = await prisma.returnRequest.findUnique({
+    where: { id: parsed.returnRequestId },
+    include: {
+      orderItem: {
+        include: {
+          order: { select: { orderNumber: true, paymentStatus: true, paymentMethod: true } },
+        },
+      },
+    },
+  });
+  if (!req) throw new Error("returnNotFound");
+  if (req.status !== "PENDING") throw new Error("returnAlreadyDecided");
+  if (req.orderItem.refundStatus !== "REQUESTED") throw new Error("returnAlreadyDecided");
+
+  if (parsed.action === "REJECT") {
+    await prisma.$transaction(async (tx) => {
+      await tx.returnRequest.update({
+        where: { id: req.id },
+        data: {
+          status: "REJECTED",
+          adminNote: parsed.note || null,
+          decidedById: admin.id,
+          decidedAt: new Date(),
+        },
+      });
+      await tx.orderItem.update({
+        where: { id: req.orderItemId },
+        data: { refundStatus: "REJECTED" },
+      });
+      await tx.notification.create({
+        data: {
+          userId: req.userId,
+          type: "PAYMENT",
+          title: "Return request rejected",
+          body: parsed.note || "Your return request was rejected.",
+          link: "/account/returns",
+        },
+      });
+    });
+  } else {
+    // APPROVE: refund the customer and reverse the vendor's credit.
+    // Only paid orders ever credited the vendor wallet, so for unpaid
+    // (COD) orders there is nothing to reverse.
+    const refundAmount = req.orderItem.unitPrice * req.quantity;
+    const commissionOnRefund = percentOf(refundAmount, req.orderItem.commissionRate);
+    const vendorReversal = refundAmount - commissionOnRefund;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.refund.create({
+        data: {
+          orderId: req.orderItem.orderId,
+          orderItemId: req.orderItemId,
+          returnRequestId: req.id,
+          amount: refundAmount,
+          status: "REFUNDED",
+          method:
+            req.orderItem.order.paymentStatus === "PAID" &&
+            req.orderItem.order.paymentMethod === "CARD"
+              ? "CARD"
+              : "PLATFORM_WALLET",
+          reference: req.orderItem.order.orderNumber,
+          note: parsed.note || null,
+          processedAt: new Date(),
+        },
+      });
+      await tx.orderItem.update({
+        where: { id: req.orderItemId },
+        data: { refundStatus: "REFUNDED", refundAmount },
+      });
+      await tx.returnRequest.update({
+        where: { id: req.id },
+        data: {
+          status: "REFUNDED",
+          adminNote: parsed.note || null,
+          decidedById: admin.id,
+          decidedAt: new Date(),
+        },
+      });
+
+      if (req.orderItem.order.paymentStatus === "PAID") {
+        const reversal = await reverseVendorCredit(
+          req.orderItem.vendorId,
+          req.orderItemId,
+          vendorReversal,
+          `Refund for order ${req.orderItem.order.orderNumber}`,
+          tx,
+        );
+        if (!reversal.ok) throw new Error(reversal.error ?? "insufficientBalance");
+      }
+
+      await tx.notification.create({
+        data: {
+          userId: req.userId,
+          type: "PAYMENT",
+          title: "Refund processed",
+          body: `Your refund of ${req.orderItem.productName} has been processed.`,
+          link: "/account/returns",
+        },
+      });
+    });
+  }
 
   revalidatePath("/", "layout");
   return { ok: true };

@@ -1,11 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { link } from "@/lib/links";
 import { LoginForm } from "@/components/auth/login-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-export const metadata: Metadata = { title: "Log in" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "login") };
+}
 
 export default async function LoginPage({
   params,
@@ -34,10 +41,10 @@ export default async function LoginPage({
           </Link>
         </p>
         <div className="rounded-lg border bg-muted/40 p-4 text-center text-xs text-muted-foreground">
-          <p className="mb-1 font-medium text-foreground">Demo accounts</p>
-          <p>Customer: yasmine@example.com · password123</p>
-          <p>Vendor: sara@caitech.eg · password123</p>
-          <p>Admin: admin@technomarket.eg · password123</p>
+          <p className="mb-1 font-medium text-foreground">{t.admin.demoAccounts}</p>
+          <p>{t.admin.demoCustomer}</p>
+          <p>{t.admin.demoVendor}</p>
+          <p>{t.admin.demoAdmin}</p>
         </div>
       </div>
     </div>

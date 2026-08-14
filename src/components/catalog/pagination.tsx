@@ -14,7 +14,7 @@ export function Pagination({
   page: number;
   totalPages: number;
 }) {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -39,18 +39,18 @@ export function Pagination({
       <PaginationLink
         href={pageHref(Math.max(1, page - 1))}
         disabled={page <= 1}
-        aria-label="Previous"
+        aria-label={t.common.previous}
       >
         <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
       </PaginationLink>
       {start > 1 && (
         <>
-          <PaginationLink href={pageHref(1)}>1</PaginationLink>
+          <PaginationLink href={pageHref(1)} aria-label={`${t.common.page ?? "Page"} 1`}>1</PaginationLink>
           {start > 2 && <span className="px-1 text-muted-foreground">…</span>}
         </>
       )}
       {pages.map((p) => (
-        <PaginationLink key={p} href={pageHref(p)} active={p === page}>
+        <PaginationLink key={p} href={pageHref(p)} active={p === page} aria-current={p === page ? "page" : undefined} aria-label={`${t.common.page ?? "Page"} ${p}`}>
           {p}
         </PaginationLink>
       ))}
@@ -59,13 +59,13 @@ export function Pagination({
           {end < totalPages - 1 && (
             <span className="px-1 text-muted-foreground">…</span>
           )}
-          <PaginationLink href={pageHref(totalPages)}>{totalPages}</PaginationLink>
+          <PaginationLink href={pageHref(totalPages)} aria-label={`${t.common.page ?? "Page"} ${totalPages}`}>{totalPages}</PaginationLink>
         </>
       )}
       <PaginationLink
         href={pageHref(Math.min(totalPages, page + 1))}
         disabled={page >= totalPages}
-        aria-label="Next"
+        aria-label={t.common.next}
       >
         <ChevronRight className="h-4 w-4 rtl:rotate-180" />
       </PaginationLink>

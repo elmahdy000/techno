@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useLocale, useT } from "@/i18n/client";
 import { addWishlistToCart } from "@/lib/actions/wishlist-actions";
 import { Button } from "@/components/ui/button";
+import { getErrorMessage } from "@/i18n/errors";
 
 export function AddWishlistToCart() {
   const t = useT();
@@ -21,7 +22,7 @@ export function AddWishlistToCart() {
             await addWishlistToCart(locale);
             toast.success(t.cart.added);
           } catch (err) {
-            toast.error(err instanceof Error ? err.message : t.common.error);
+            toast.error(getErrorMessage(err, t));
           }
         })
       }

@@ -1,10 +1,17 @@
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { prisma } from "@/lib/prisma";
 import { link } from "@/lib/links";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
-export const metadata = { title: "Admin support" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "adminSupport") };
+}
 
 const STATUS_KEY: Record<string, string> = {
   OPEN: "statusOpen",

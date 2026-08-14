@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { prisma } from "@/lib/prisma";
 import { link } from "@/lib/links";
 import { AdminTicketReplyForm } from "@/components/admin/ticket-reply-form";
@@ -9,7 +9,14 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-export const metadata: Metadata = { title: "Admin support ticket" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; id: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "adminSupportTicket") };
+}
 
 const STATUS_KEY: Record<string, string> = {
   OPEN: "statusOpen",
@@ -17,6 +24,22 @@ const STATUS_KEY: Record<string, string> = {
   WAITING_CUSTOMER: "statusWaitingCustomer",
   RESOLVED: "statusResolved",
   CLOSED: "statusClosed",
+};
+
+const CATEGORY_KEY: Record<string, string> = {
+  ORDER: "catOrder",
+  PAYMENT: "catPayment",
+  RETURN: "catReturn",
+  PRODUCT: "catProduct",
+  ACCOUNT: "catAccount",
+  VENDOR: "catVendor",
+  OTHER: "catOther",
+};
+
+const PRIORITY_KEY: Record<string, string> = {
+  LOW: "priorityLow",
+  MEDIUM: "priorityMedium",
+  HIGH: "priorityHigh",
 };
 
 export default async function AdminTicketDetailPage({
@@ -59,8 +82,9 @@ export default async function AdminTicketDetailPage({
           </Badge>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          #{ticket.ticketNumber} · {ticket.user.name} ({ticket.user.email}) · {ticket.category} ·{" "}
-          {ticket.priority} ·{" "}
+          #{ticket.ticketNumber} · {ticket.user.name} ({ticket.user.email}) ·{" "}
+          {t.support[CATEGORY_KEY[ticket.category] as keyof typeof t.support] ?? ticket.category} ·{" "}
+          {t.support[PRIORITY_KEY[ticket.priority] as keyof typeof t.support] ?? ticket.priority} ·{" "}
           {new Date(ticket.createdAt).toLocaleString(locale === "ar" ? "ar-EG" : "en-US")}
         </p>
       </div>

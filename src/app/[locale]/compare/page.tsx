@@ -1,8 +1,15 @@
 import type { Metadata } from "next";
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { CompareView } from "@/components/compare/compare-view";
 
-export const metadata: Metadata = { title: "Compare" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "compare") };
+}
 
 export default async function ComparePage({
   params,

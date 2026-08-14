@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser, getCurrentVendor } from "@/lib/session";
+import { getCurrentUser } from "@/lib/session";
 import { link } from "@/lib/links";
 import { slugify, generateUniqueSuffix } from "@/lib/utils";
 import { toMinor } from "@/lib/money";
@@ -13,12 +13,12 @@ async function requireApprovedVendor(locale: string) {
   const user = await getCurrentUser();
   if (!user) redirect(link(locale, "/auth/login"));
   if (user.role !== "VENDOR") {
-    throw new Error("Vendor access required");
+    throw new Error("vendorAccessRequired");
   }
   const vendor = await prisma.vendor.findUnique({ where: { userId: user.id } });
-  if (!vendor) throw new Error("Vendor account not found");
+  if (!vendor) throw new Error("vendorAccountNotFound");
   if (vendor.status !== "APPROVED") {
-    throw new Error("Vendor account is not approved yet");
+    throw new Error("vendorNotApproved");
   }
   return { user, vendor };
 }
@@ -50,7 +50,20 @@ const productSchema = z.object({
   warranty: z.string().max(100).optional().or(z.literal("")),
   status: z.enum(["DRAFT", "ACTIVE", "INACTIVE", "ARCHIVED"]),
   featured: z.boolean().optional(),
-  images: z.array(z.string().url().or(z.string().min(1))).max(8).optional(),
+  images: z
+    .array(z.string())
+    .max(8)
+    .refine(
+      (urls) =>
+        urls.every(
+          (u) =>
+            /^https?:\/\/.+/.test(u) ||
+            u.startsWith("/uploads/") ||
+            u.startsWith("/api/placeholder"),
+        ),
+      "Only http(s) or platform-hosted image URLs are allowed",
+    )
+    .optional(),
   variants: z.array(variantSchema).min(1).max(20),
   specs: z.record(z.string(), z.string()).optional(),
 });
@@ -63,26 +76,26 @@ export async function saveProduct(
   const parsed = productSchema.parse(input);
   const isEdit = !!parsed.id;
 
-  if (parsed.variants.length === 0) throw new Error("At least one variant is required");
+  if (parsed.variants.length === 0) throw new Error("variantRequired");
   const skus = parsed.variants.map((v) => v.sku.trim().toUpperCase());
-  if (new Set(skus).size !== skus.length) throw new Error("Duplicate SKUs in variants");
+  if (new Set(skus).size !== skus.length) throw new Error("duplicateSkus");
 
   // Check SKU uniqueness across vendors
   if (isEdit) {
     const existing = await prisma.variant.findFirst({
       where: { sku: { in: skus }, productId: { not: parsed.id } },
     });
-    if (existing) throw new Error(`SKU ${existing.sku} already exists`);
+    if (existing) throw new Error(`skuTaken:${existing.sku}`);
   } else {
     const existing = await prisma.variant.findFirst({ where: { sku: { in: skus } } });
-    if (existing) throw new Error(`SKU ${existing.sku} already exists`);
+    if (existing) throw new Error(`skuTaken:${existing.sku}`);
   }
 
   if (isEdit) {
     const product = await prisma.product.findFirst({
       where: { id: parsed.id, vendorId: vendor.id },
     });
-    if (!product) throw new Error("Product not found");
+    if (!product) throw new Error("productNotFound");
   }
 
   const baseSlug = slugify(parsed.name);
@@ -156,8 +169,9 @@ export async function saveProduct(
     }
 
     // Variants
+    let oldIds: Array<{ id: string }> = [];
     if (isEdit) {
-      const oldIds = await tx.variant.findMany({ where: { productId } });
+      oldIds = await tx.variant.findMany({ where: { productId } });
       const newIds = parsed.variants.filter((v) => v.id).map((v) => v.id!);
       for (const old of oldIds) {
         if (!newIds.includes(old.id)) {
@@ -175,6 +189,10 @@ export async function saveProduct(
         options: v.options && Object.keys(v.options).length ? v.options : undefined,
       };
       if (v.id && isEdit) {
+        // Only allow updating variants that belong to this product (IDOR guard)
+        if (!oldIds.some((o) => o.id === v.id)) {
+          throw new Error("variantNotFound");
+        }
         await tx.variant.update({ where: { id: v.id }, data });
       } else {
         await tx.variant.create({ data: { ...data, productId: productId! } });
@@ -200,6 +218,11 @@ export async function saveProduct(
 }
 
 async function uniqueSlug(base: string, _excludeId?: string): Promise<string> {
+  const existing = await prisma.product.findFirst({
+    where: { slug: base, ...(_excludeId ? { id: { not: _excludeId } } : {}) },
+    select: { id: true },
+  });
+  if (!existing) return base;
   return `${base}-${generateUniqueSuffix()}`;
 }
 
@@ -208,7 +231,7 @@ export async function deleteProduct(locale: string, productId: string) {
   const product = await prisma.product.findFirst({
     where: { id: productId, vendorId: vendor.id },
   });
-  if (!product) throw new Error("Product not found");
+  if (!product) throw new Error("productNotFound");
   const orderItemCount = await prisma.orderItem.count({ where: { productId } });
   if (orderItemCount > 0) {
     await prisma.product.update({ where: { id: productId }, data: { status: "ARCHIVED" } });
@@ -237,13 +260,21 @@ export async function adjustInventory(locale: string, input: z.infer<typeof inve
     where: { id: parsed.variantId, product: { vendorId: vendor.id } },
     include: { product: { select: { id: true, totalStock: true } } },
   });
-  if (!variant) throw new Error("Variant not found");
+  if (!variant) throw new Error("variantNotFound");
 
-  const newStock = Math.max(0, variant.stock + parsed.delta);
-  const actualDelta = newStock - variant.stock;
+  const prevStock = variant.stock;
 
   await prisma.$transaction(async (tx) => {
-    await tx.variant.update({ where: { id: variant.id }, data: { stock: newStock } });
+    // Atomic clamp-to-zero update so concurrent adjustments can't lose changes
+    const rows = await tx.$queryRaw<Array<{ stock: number }>>`
+      UPDATE "Variant"
+      SET "stock" = GREATEST(0, "stock" + ${parsed.delta}), "updatedAt" = now()
+      WHERE "id" = ${variant.id}
+      RETURNING "stock"
+    `;
+    const newStock = rows[0]?.stock ?? prevStock;
+    const actualDelta = newStock - prevStock;
+
     await tx.product.update({
       where: { id: variant.productId },
       data: { totalStock: { increment: actualDelta } },
@@ -283,7 +314,7 @@ export async function shipShipment(locale: string, input: z.infer<typeof shipSch
     where: { id: parsed.shipmentId, vendorId: vendor.id },
     include: { items: true },
   });
-  if (!shipment) throw new Error("Shipment not found");
+  if (!shipment) throw new Error("shipmentNotFound");
 
   await prisma.$transaction(async (tx) => {
     await tx.orderShipment.update({
@@ -324,50 +355,79 @@ export async function deliverShipment(locale: string, shipmentId: string) {
   const { vendor } = await requireApprovedVendor(locale);
   const shipment = await prisma.orderShipment.findFirst({
     where: { id: shipmentId, vendorId: vendor.id },
-    include: { items: true },
+    include: {
+      items: true,
+      order: {
+        select: { id: true, userId: true, orderNumber: true, paymentStatus: true, status: true },
+      },
+    },
   });
-  if (!shipment) throw new Error("Shipment not found");
+  if (!shipment) throw new Error("shipmentNotFound");
 
+  // Only settle funds for orders that have actually been paid. COD orders are
+  // never credited to pendingBalance (checkout gates credit on paymentStatus),
+  // so settling them here would drive the pending balance negative.
+  const isPaid = shipment.order.paymentStatus === "PAID";
+
+  let transitioned = false;
   await prisma.$transaction(async (tx) => {
-    await tx.orderShipment.update({
-      where: { id: shipment.id },
+    const shipmentUpdated = await tx.orderShipment.updateMany({
+      where: { id: shipment.id, status: { not: "DELIVERED" } },
       data: { status: "DELIVERED", deliveredAt: new Date() },
     });
+    // Idempotency guard: if the shipment was already delivered, do nothing.
+    if (shipmentUpdated.count === 0) return;
+
     for (const item of shipment.items) {
-      await tx.orderItem.update({
-        where: { id: item.id },
+      const itemUpdated = await tx.orderItem.updateMany({
+        where: { id: item.id, shippingStatus: { not: "DELIVERED" } },
         data: { shippingStatus: "DELIVERED", deliveredAt: new Date() },
       });
-      // settle funds pending -> available
-      if (item.vendorNet > 0) {
+      if (itemUpdated.count === 0) continue;
+
+      // settle funds pending -> available (only once per item)
+      if (isPaid && item.vendorNet > 0) {
         const wallet = await tx.wallet.upsert({
           where: { vendorId: vendor.id },
           create: { vendorId: vendor.id },
           update: {},
         });
-        const settled = await tx.wallet.update({
-          where: { id: wallet.id },
+        // Only move funds that are actually pending; guards against over-settling.
+        const settled = await tx.wallet.updateMany({
+          where: { id: wallet.id, pendingBalance: { gte: item.vendorNet } },
           data: {
             pendingBalance: { decrement: item.vendorNet },
             availableBalance: { increment: item.vendorNet },
             lifetimeEarned: { increment: item.vendorNet },
           },
         });
-        await tx.ledgerEntry.create({
-          data: {
-            walletId: wallet.id,
-            vendorId: vendor.id,
-            type: "ORDER_CREDIT",
-            amount: item.vendorNet,
-            balanceAfter: settled.availableBalance,
-            orderItemId: item.id,
-            reference: item.sku,
-            description: "Funds settled on delivery",
-          },
-        });
+        if (settled.count > 0) {
+          const walletAfter = await tx.wallet.findUniqueOrThrow({
+            where: { id: wallet.id },
+          });
+          await tx.ledgerEntry.create({
+            data: {
+              walletId: wallet.id,
+              vendorId: vendor.id,
+              type: "ORDER_CREDIT",
+              amount: item.vendorNet,
+              balanceAfter: walletAfter.availableBalance,
+              orderItemId: item.id,
+              reference: item.sku,
+              description: "Funds settled on delivery",
+            },
+          });
+        }
       }
     }
+    transitioned = true;
   });
+
+  // Order-level completion is only relevant when the shipment actually transitioned
+  if (!transitioned) {
+    revalidatePath("/", "layout");
+    return { ok: true };
+  }
 
   // Check if all shipments delivered -> order delivered
   const order = await prisma.order.findUnique({
@@ -418,8 +478,19 @@ export async function requestWithdrawal(locale: string, input: z.infer<typeof wi
   const amountMinor = toMinor(parsed.amount);
 
   const wallet = await prisma.wallet.findUnique({ where: { vendorId: vendor.id } });
-  if (!wallet || wallet.availableBalance < amountMinor) {
-    throw new Error("Insufficient available balance");
+  if (!wallet) throw new Error("insufficientBalance");
+
+  // Reserve already-requested withdrawals so pending requests can't exceed balance
+  const pending = await prisma.withdrawal.aggregate({
+    where: {
+      vendorId: vendor.id,
+      status: { in: ["PENDING", "PROCESSING"] },
+    },
+    _sum: { amount: true },
+  });
+  const reserved = pending._sum.amount ?? 0;
+  if (wallet.availableBalance - reserved < amountMinor) {
+    throw new Error("insufficientBalance");
   }
 
   const withdrawal = await prisma.withdrawal.create({
@@ -453,7 +524,7 @@ export async function respondToReview(locale: string, input: z.infer<typeof revi
   const review = await prisma.review.findFirst({
     where: { id: parsed.reviewId, product: { vendorId: vendor.id } },
   });
-  if (!review) throw new Error("Review not found");
+  if (!review) throw new Error("reviewNotFound");
 
   await prisma.reviewResponse.upsert({
     where: { reviewId: parsed.reviewId },

@@ -54,7 +54,7 @@ export async function Header({ locale }: { locale: Locale }) {
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <Cpu className="h-5 w-5" />
           </span>
-          <span className="text-lg">{t.brand.name}</span>
+          <span className="hidden text-lg min-[400px]:inline">{t.brand.name}</span>
         </Link>
 
         <div className="hidden max-w-md flex-1 md:block">

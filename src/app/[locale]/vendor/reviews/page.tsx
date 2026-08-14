@@ -1,4 +1,4 @@
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { getCurrentVendor } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { pickL } from "@/lib/links";
@@ -6,7 +6,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Rating } from "@/components/product/rating";
 import { RespondReviewDialog } from "@/components/vendor/respond-review-dialog";
 
-export const metadata = { title: "Reviews" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "vendorReviews") };
+}
 
 export default async function VendorReviewsPage({
   params,
@@ -32,7 +39,9 @@ export default async function VendorReviewsPage({
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">{t.vendor.reviews}</h1>
-        <p className="text-sm text-muted-foreground">{reviews.length} reviews</p>
+        <p className="text-sm text-muted-foreground">
+          {t.admin.reviewsCount.replace("{count}", String(reviews.length))}
+        </p>
       </div>
 
       {reviews.length === 0 ? (

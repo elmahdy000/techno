@@ -22,16 +22,19 @@ export function ImageGallery({
         <img
           src={main.url}
           alt={main.alt ?? name}
+          fetchPriority="high"
           className="h-full w-full object-cover"
         />
       </div>
       {images.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label={name}>
           {images.map((img, i) => (
             <button
               key={img.url + i}
               type="button"
               onClick={() => setIndex(i)}
+              aria-label={`${name} ${i + 1}`}
+              aria-current={i === index}
               className={cn(
                 "relative h-16 w-16 shrink-0 overflow-hidden rounded-md border bg-muted",
                 i === index && "border-primary ring-1 ring-primary",

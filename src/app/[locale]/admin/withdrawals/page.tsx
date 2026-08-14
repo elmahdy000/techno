@@ -1,11 +1,19 @@
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { prisma } from "@/lib/prisma";
 import { formatMoney } from "@/lib/money";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { WithdrawalDecisionButtons } from "@/components/admin/withdrawal-decision-buttons";
+import { withdrawalStatusLabel } from "@/components/order/status";
 
-export const metadata = { title: "Withdrawals" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "adminWithdrawals") };
+}
 
 const STATUS_VARIANT: Record<string, "secondary" | "success" | "default" | "outline" | "destructive"> = {
   PENDING: "secondary",
@@ -33,7 +41,9 @@ export default async function AdminWithdrawalsPage({
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">{t.admin.withdrawals}</h1>
-        <p className="text-sm text-muted-foreground">{withdrawals.length} requests</p>
+        <p className="text-sm text-muted-foreground">
+          {t.admin.withdrawalsCount.replace("{count}", String(withdrawals.length))}
+        </p>
       </div>
 
       <div className="space-y-3">
@@ -65,7 +75,7 @@ export default async function AdminWithdrawalsPage({
                         <p className="mt-1 text-xs text-muted-foreground">{w.requestNote}</p>
                       )}
                     </div>
-                    <Badge variant={STATUS_VARIANT[w.status]}>{w.status}</Badge>
+                    <Badge variant={STATUS_VARIANT[w.status]}>{withdrawalStatusLabel(w.status, t)}</Badge>
                   </div>
                   {w.status === "PENDING" && (
                     <div className="mt-3 border-t pt-3">

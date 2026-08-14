@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { link } from "@/lib/links";
@@ -21,7 +20,7 @@ export async function toggleWishlist(locale: string, productId: string) {
       where: { id: productId, status: "ACTIVE" },
       select: { id: true },
     });
-    if (!product) throw new Error("Product not found");
+    if (!product) throw new Error("productNotFound");
     await prisma.wishlistItem.create({ data: { userId: user.id, productId } });
   }
 
@@ -44,7 +43,7 @@ export async function addWishlistToCart(locale: string) {
   if (!user) redirect(link(locale, "/auth/login"));
 
   const wishlist = await prisma.wishlistItem.findMany({
-    where: { userId: user.id },
+    where: { userId: user.id, product: { status: "ACTIVE" } },
     include: {
       product: { include: { variants: { where: { active: true }, orderBy: { price: "asc" } } } },
     },
@@ -74,5 +73,3 @@ export async function addWishlistToCart(locale: string) {
   revalidatePath("/", "layout");
   return { ok: true };
 }
-
-export const wishlistInput = z.object({ productId: z.string() });

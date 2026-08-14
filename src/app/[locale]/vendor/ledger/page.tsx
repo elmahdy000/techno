@@ -1,4 +1,4 @@
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { getCurrentVendor } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { formatMoney } from "@/lib/money";
@@ -12,7 +12,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-export const metadata = { title: "Ledger" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "vendorLedger") };
+}
 
 export default async function VendorLedgerPage({
   params,
@@ -38,7 +45,7 @@ export default async function VendorLedgerPage({
 
       <Card>
         <CardContent className="p-0">
-          <Table>
+          <Table className="min-w-[640px]">
             <TableHeader>
               <TableRow>
                 <TableHead>{t.common.date}</TableHead>

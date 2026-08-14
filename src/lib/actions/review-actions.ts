@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { link } from "@/lib/links";
@@ -22,19 +23,19 @@ export async function submitReview(
   const user = await getCurrentUser();
   if (!user) redirect(link(locale, "/auth/login"));
   if (user.role !== "CUSTOMER") {
-    throw new Error("Only customers can write reviews");
+    throw new Error("customersOnly");
   }
 
   const parsed = reviewSchema.parse(input);
   const product = await prisma.product.findFirst({
     where: { id: parsed.productId, status: "ACTIVE" },
   });
-  if (!product) throw new Error("Product not found");
+  if (!product) throw new Error("productNotFound");
 
   const existing = await prisma.review.findUnique({
     where: { userId_productId: { userId: user.id, productId: parsed.productId } },
   });
-  if (existing) throw new Error("You already reviewed this product");
+  if (existing) throw new Error("alreadyReviewed");
 
   let verified = false;
   if (parsed.orderItemId) {
@@ -52,29 +53,45 @@ export async function submitReview(
     if (orderItem) verified = true;
   }
 
-  const review = await prisma.review.create({
-    data: {
-      userId: user.id,
-      productId: parsed.productId,
-      orderItemId: parsed.orderItemId || null,
-      rating: parsed.rating,
-      title: parsed.title || null,
-      body: parsed.body,
-      status: "PUBLISHED",
-      isVerifiedPurchase: verified,
-    },
-  });
-
-  await recomputeRating(parsed.productId);
-
-  await prisma.notification.create({
-    data: {
-      vendorId: product.vendorId,
-      type: "REVIEW",
-      title: "New product review",
-      body: `${user.name} left a ${parsed.rating}-star review on ${product.name}`,
-      link: "/vendor/reviews",
-    },
+  // Created as PENDING so reviews go through the moderation queue
+  // (admin can publish/reject via admin/reviews). Rating only counts
+  // published reviews, so nothing leaks before approval.
+  const review = await prisma.$transaction(async (tx) => {
+    try {
+      const created = await tx.review.create({
+        data: {
+          userId: user.id,
+          productId: parsed.productId,
+          orderItemId: parsed.orderItemId || null,
+          rating: parsed.rating,
+          title: parsed.title || null,
+          body: parsed.body,
+          status: "PENDING",
+          isVerifiedPurchase: verified,
+        },
+      });
+      await recomputeRating(parsed.productId, tx);
+      await tx.notification.create({
+        data: {
+          vendorId: product.vendorId,
+          type: "REVIEW",
+          title: "New product review",
+          body: `${user.name} left a ${parsed.rating}-star review on ${product.name}`,
+          link: "/vendor/reviews",
+        },
+      });
+      return created;
+    } catch (err) {
+      if (
+        typeof err === "object" &&
+        err !== null &&
+        "code" in err &&
+        (err as { code: string }).code === "P2002"
+      ) {
+        throw new Error("alreadyReviewed");
+      }
+      throw err;
+    }
   });
 
   revalidatePath("/", "layout");
@@ -91,54 +108,72 @@ export async function voteHelpful(locale: string, input: z.infer<typeof voteSche
   if (!user) redirect(link(locale, "/auth/login"));
   const parsed = voteSchema.parse(input);
 
-  const existing = await prisma.reviewHelpful.findUnique({
-    where: {
-      userId_reviewId: { userId: user.id, reviewId: parsed.reviewId },
-    },
-  });
-
-  if (existing) {
-    if (existing.helpful === parsed.helpful) {
-      await prisma.reviewHelpful.delete({ where: { id: existing.id } });
-      await prisma.review.update({
-        where: { id: parsed.reviewId },
-        data: { helpfulCount: { increment: parsed.helpful ? -1 : 1 } },
-      });
-    } else {
-      await prisma.reviewHelpful.update({
-        where: { id: existing.id },
-        data: { helpful: parsed.helpful },
-      });
-      await prisma.review.update({
-        where: { id: parsed.reviewId },
-        data: { helpfulCount: { increment: parsed.helpful ? 1 : -1 } },
-      });
-    }
-  } else {
-    await prisma.reviewHelpful.create({
-      data: {
-        userId: user.id,
-        reviewId: parsed.reviewId,
-        helpful: parsed.helpful,
+  await prisma.$transaction(async (tx) => {
+    const existing = await tx.reviewHelpful.findUnique({
+      where: {
+        userId_reviewId: { userId: user.id, reviewId: parsed.reviewId },
       },
     });
-    await prisma.review.update({
-      where: { id: parsed.reviewId },
-      data: { helpfulCount: { increment: parsed.helpful ? 1 : 0 } },
-    });
-  }
+
+    if (existing) {
+      if (existing.helpful === parsed.helpful) {
+        await tx.reviewHelpful.delete({ where: { id: existing.id } });
+        await tx.review.update({
+          where: { id: parsed.reviewId },
+          data: { helpfulCount: { increment: parsed.helpful ? -1 : 0 } },
+        });
+      } else {
+        await tx.reviewHelpful.update({
+          where: { id: existing.id },
+          data: { helpful: parsed.helpful },
+        });
+        await tx.review.update({
+          where: { id: parsed.reviewId },
+          data: { helpfulCount: { increment: parsed.helpful ? 1 : -1 } },
+        });
+      }
+    } else {
+      try {
+        await tx.reviewHelpful.create({
+          data: {
+            userId: user.id,
+            reviewId: parsed.reviewId,
+            helpful: parsed.helpful,
+          },
+        });
+      } catch (err) {
+        if (
+          typeof err === "object" &&
+          err !== null &&
+          "code" in err &&
+          (err as { code: string }).code === "P2002"
+        ) {
+          return; // concurrent vote, already recorded
+        }
+        throw err;
+      }
+      await tx.review.update({
+        where: { id: parsed.reviewId },
+        data: { helpfulCount: { increment: parsed.helpful ? 1 : 0 } },
+      });
+    }
+  });
 
   revalidatePath("/", "layout");
   return { ok: true };
 }
 
-async function recomputeRating(productId: string) {
-  const agg = await prisma.review.aggregate({
+async function recomputeRating(
+  productId: string,
+  tx?: Prisma.TransactionClient,
+) {
+  const db = tx ?? prisma;
+  const agg = await db.review.aggregate({
     where: { productId, status: "PUBLISHED" },
     _avg: { rating: true },
     _count: { _all: true },
   });
-  await prisma.product.update({
+  await db.product.update({
     where: { id: productId },
     data: {
       rating: agg._avg.rating ?? 0,

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Banknote, Package, ShoppingBag, Wallet as WalletIcon } from "lucide-react";
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { getCurrentVendor } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { link } from "@/lib/links";
@@ -8,8 +8,16 @@ import { formatMoney } from "@/lib/money";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { statusBadge } from "@/components/order/status";
 
-export const metadata = { title: "Vendor overview" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "vendor") };
+}
 
 export default async function VendorOverviewPage({
   params,
@@ -25,14 +33,12 @@ export default async function VendorOverviewPage({
     wallet,
     orderItems,
     orderCount,
-    productCount,
     lowStock,
     recentOrders,
   ] = await Promise.all([
     prisma.wallet.findUnique({ where: { vendorId: vendor.id } }),
     prisma.orderItem.findMany({ where: { vendorId: vendor.id } }),
     prisma.order.count({ where: { items: { some: { vendorId: vendor.id } } } }),
-    prisma.product.count({ where: { vendorId: vendor.id, status: { not: "ARCHIVED" } } }),
     prisma.variant.findMany({
       where: { product: { vendorId: vendor.id, status: { not: "ARCHIVED" } }, active: true },
       orderBy: { stock: "asc" },
@@ -166,7 +172,6 @@ export default async function VendorOverviewPage({
           ) : (
             <ul className="divide-y">
               {recentOrders.map((o) => {
-                const grossAmount = o.items.reduce((a, i) => a + i.lineTotal, 0);
                 const netAmount = o.items.reduce((a, i) => a + i.vendorNet, 0);
                 return (
                   <li key={o.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
@@ -180,7 +185,7 @@ export default async function VendorOverviewPage({
                       <span className="text-xs text-muted-foreground">
                         {t.vendor.netAmount}: {formatMoney(netAmount)}
                       </span>
-                      <Badge variant="secondary">{o.status}</Badge>
+                      {statusBadge(o.status, t, "sm")}
                     </div>
                   </li>
                 );

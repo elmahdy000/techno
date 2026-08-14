@@ -15,12 +15,17 @@ export function roundMoney(value: number): number {
   return Math.round(value);
 }
 
+function numberLocale(locale: string): string {
+  return locale === "ar" ? "ar-EG" : "en-EG";
+}
+
 export function formatMoney(
   minor: number,
   currency: string = CURRENCY,
+  locale: string = "en",
 ): string {
   const amount = fromMinor(minor);
-  return new Intl.NumberFormat("en-EG", {
+  return new Intl.NumberFormat(numberLocale(locale), {
     style: "currency",
     currency,
     minimumFractionDigits: 2,
@@ -28,9 +33,13 @@ export function formatMoney(
   }).format(amount);
 }
 
-export function formatMoneyShort(minor: number, currency: string = CURRENCY) {
+export function formatMoneyShort(
+  minor: number,
+  currency: string = CURRENCY,
+  locale: string = "en",
+) {
   const amount = fromMinor(minor);
-  return new Intl.NumberFormat("en-EG", {
+  return new Intl.NumberFormat(numberLocale(locale), {
     style: "currency",
     currency,
     maximumFractionDigits: 0,

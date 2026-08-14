@@ -1,11 +1,13 @@
 "use client";
 
 import { useOptimistic, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Heart } from "lucide-react";
 import { toast } from "sonner";
-import { useLocale } from "@/i18n/client";
+import { useLocale, useT } from "@/i18n/client";
 import { toggleWishlist } from "@/lib/actions/wishlist-actions";
 import { cn } from "@/lib/utils";
+import { getErrorMessage } from "@/i18n/errors";
 
 export function WishlistButton({
   productId,
@@ -19,22 +21,26 @@ export function WishlistButton({
   size?: "icon" | "sm";
 }) {
   const locale = useLocale();
-  const [pending, startTransition] = useTransition();
+  const t = useT();
+  const router = useRouter();
+  const [, startTransition] = useTransition();
   const [optimistic, setOptimistic] = useOptimistic(initialInWishlist);
 
   return (
     <button
       type="button"
-      aria-label="Wishlist"
+      aria-label={optimistic ? t.common.removeFromWishlist : t.common.saveToWishlist}
+      aria-pressed={optimistic}
       onClick={() => {
         setOptimistic(!optimistic);
         startTransition(async () => {
           try {
             const res = await toggleWishlist(locale, productId);
-            toast.success(res.added ? "Saved" : "Removed");
+            toast.success(res.added ? t.common.saved : t.common.removed);
+            router.refresh();
           } catch (err) {
             setOptimistic(initialInWishlist);
-            toast.error(err instanceof Error ? err.message : "Error");
+            toast.error(getErrorMessage(err, t));
           }
         });
       }}

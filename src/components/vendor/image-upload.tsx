@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { ImagePlus, Loader2, Trash2 } from "lucide-react";
 import { useT } from "@/i18n/client";
+import { getErrorMessage } from "@/i18n/errors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -28,7 +29,7 @@ export function ImageUpload({
         const res = await fetch("/api/upload", { method: "POST", body: fd });
         const json = (await res.json()) as { url?: string; error?: string };
         if (!res.ok || !json.url) {
-          toast.error(json.error ?? t.common.error);
+          toast.error(getErrorMessage(json.error ?? "uploadFailed", t));
           return;
         }
         if (images.length >= 8) {
@@ -53,16 +54,16 @@ export function ImageUpload({
     <div className="space-y-3">
       <div className="flex flex-wrap gap-3">
         {images.map((url, i) => (
-          <div key={`${url}-${i}`} className="group relative h-24 w-24 overflow-hidden rounded-md border bg-muted">
+          <div key={`${url}-${i}`} className="group relative h-24 w-24 shrink-0 overflow-hidden rounded-md border bg-muted">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={url} alt="" className="h-full w-full object-cover" />
             <button
               type="button"
               onClick={() => onChange(images.filter((_, idx) => idx !== i))}
-              className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100"
+              className="absolute end-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white opacity-80 shadow-sm transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none"
               aria-label={t.common.delete}
             >
-              <Trash2 className="h-4 w-4 text-white" />
+              <Trash2 className="h-3.5 w-3.5" />
             </button>
             {i === 0 && (
               <span className="absolute bottom-0 left-0 right-0 bg-primary/90 px-1 text-center text-[9px] font-semibold text-primary-foreground">

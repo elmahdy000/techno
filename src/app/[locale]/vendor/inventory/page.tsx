@@ -1,4 +1,4 @@
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { getCurrentVendor } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { link } from "@/lib/links";
@@ -14,7 +14,14 @@ import {
 } from "@/components/ui/table";
 import { AdjustStockDialog } from "@/components/vendor/adjust-stock-dialog";
 
-export const metadata = { title: "Inventory" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "vendorInventory") };
+}
 
 export default async function VendorInventoryPage({
   params,
@@ -52,7 +59,7 @@ export default async function VendorInventoryPage({
           <CardTitle className="text-base">{t.vendor.variants}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <Table>
+          <Table className="min-w-[640px]">
             <TableHeader>
               <TableRow>
                 <TableHead>{t.common.name}</TableHead>

@@ -133,6 +133,7 @@ export function CatalogFilters({
           <select
             value={attrFilters.get(f.slug) ?? ""}
             onChange={(e) => setAttr(f.slug, e.target.value)}
+            aria-label={locale === "ar" && f.nameAr ? f.nameAr : f.name}
             className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
           >
             <option value="">{t.filters.all}</option>
@@ -154,12 +155,14 @@ export function CatalogFilters({
           <Input
             type="number"
             placeholder={t.filters.minPrice}
+            aria-label={t.filters.minPrice}
             value={minInput}
             onChange={(e) => setMinInput(e.target.value)}
           />
           <Input
             type="number"
             placeholder={t.filters.maxPrice}
+            aria-label={t.filters.maxPrice}
             value={maxInput}
             onChange={(e) => setMaxInput(e.target.value)}
           />

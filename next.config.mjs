@@ -1,8 +1,6 @@
 const nextConfig = {
   serverExternalPackages: ["@prisma/client"],
-  experimental: {
-    allowedDevOrigins: [".monkeycode-ai.live"],
-  },
+  allowedDevOrigins: [".monkeycode-ai.live"],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "**" },

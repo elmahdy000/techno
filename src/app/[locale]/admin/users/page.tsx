@@ -1,4 +1,4 @@
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,7 +12,14 @@ import {
 } from "@/components/ui/table";
 import { UserActionButton } from "@/components/admin/user-actions";
 
-export const metadata = { title: "Users" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "adminUsers") };
+}
 
 export default async function AdminUsersPage({
   params,
@@ -32,19 +39,21 @@ export default async function AdminUsersPage({
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">{t.admin.users}</h1>
-        <p className="text-sm text-muted-foreground">{users.length} users</p>
+        <p className="text-sm text-muted-foreground">
+          {t.admin.usersCount.replace("{count}", String(users.length))}
+        </p>
       </div>
 
       <Card>
         <CardContent className="p-0">
-          <Table>
+          <Table className="min-w-[640px]">
             <TableHeader>
               <TableRow>
                 <TableHead>{t.common.name}</TableHead>
                 <TableHead>{t.common.email}</TableHead>
                 <TableHead>{t.nav.orders}</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t.common.role}</TableHead>
+                <TableHead>{t.common.status}</TableHead>
                 <TableHead className="text-end">{t.common.edit}</TableHead>
               </TableRow>
             </TableHeader>
@@ -59,7 +68,7 @@ export default async function AdminUsersPage({
                   </TableCell>
                   <TableCell>
                     <Badge variant={u.active ? "success" : "destructive"}>
-                      {u.active ? "Active" : "Inactive"}
+                      {u.active ? t.common.active : t.common.inactive}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-end">

@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useId } from "react";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/i18n/client";
-import { saveAddress, deleteAddress } from "@/lib/actions/address-actions";
+import { getErrorMessage } from "@/i18n/errors";
+import { saveAddress } from "@/lib/actions/address-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -42,6 +44,8 @@ export function AddressFormDialog({
   trigger: React.ReactNode;
 }) {
   const { t } = useI18n();
+  const router = useRouter();
+  const uid = useId();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [form, setForm] = useState({
@@ -63,8 +67,9 @@ export function AddressFormDialog({
         await saveAddress(locale, { ...form, id: address?.id });
         toast.success(t.common.success);
         setOpen(false);
+        router.refresh();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : t.common.error);
+        toast.error(getErrorMessage(err, t));
       }
     });
   }
@@ -82,18 +87,24 @@ export function AddressFormDialog({
         <form onSubmit={submit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="a-fullName">{t.checkout.fullName}</Label>
+              <Label htmlFor={`${uid}-fullName`}>
+                {t.checkout.fullName}
+                <span className="ms-0.5 text-destructive" aria-hidden="true">*</span>
+              </Label>
               <Input
-                id="a-fullName"
+                id={`${uid}-fullName`}
                 required
                 value={form.fullName}
                 onChange={(e) => setForm({ ...form, fullName: e.target.value })}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="a-phone">{t.common.phone}</Label>
+              <Label htmlFor={`${uid}-phone`}>
+                {t.common.phone}
+                <span className="ms-0.5 text-destructive" aria-hidden="true">*</span>
+              </Label>
               <Input
-                id="a-phone"
+                id={`${uid}-phone`}
                 required
                 dir="ltr"
                 value={form.phone}
@@ -102,36 +113,42 @@ export function AddressFormDialog({
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="a-line1">{t.checkout.addressLine1}</Label>
+            <Label htmlFor={`${uid}-line1`}>
+              {t.checkout.addressLine1}
+              <span className="ms-0.5 text-destructive" aria-hidden="true">*</span>
+            </Label>
             <Input
-              id="a-line1"
+              id={`${uid}-line1`}
               required
               value={form.line1}
               onChange={(e) => setForm({ ...form, line1: e.target.value })}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="a-line2">{t.checkout.addressLine2}</Label>
+            <Label htmlFor={`${uid}-line2`}>{t.checkout.addressLine2}</Label>
             <Input
-              id="a-line2"
+              id={`${uid}-line2`}
               value={form.line2}
               onChange={(e) => setForm({ ...form, line2: e.target.value })}
             />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="a-city">{t.checkout.city}</Label>
+              <Label htmlFor={`${uid}-city`}>
+                {t.checkout.city}
+                <span className="ms-0.5 text-destructive" aria-hidden="true">*</span>
+              </Label>
               <Input
-                id="a-city"
+                id={`${uid}-city`}
                 required
                 value={form.city}
                 onChange={(e) => setForm({ ...form, city: e.target.value })}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="a-state">{t.checkout.state}</Label>
+              <Label htmlFor={`${uid}-state`}>{t.checkout.state}</Label>
               <Input
-                id="a-state"
+                id={`${uid}-state`}
                 value={form.state}
                 onChange={(e) => setForm({ ...form, state: e.target.value })}
               />
@@ -139,18 +156,21 @@ export function AddressFormDialog({
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="a-country">{t.checkout.country}</Label>
+              <Label htmlFor={`${uid}-country`}>
+                {t.checkout.country}
+                <span className="ms-0.5 text-destructive" aria-hidden="true">*</span>
+              </Label>
               <Input
-                id="a-country"
+                id={`${uid}-country`}
                 required
                 value={form.country}
                 onChange={(e) => setForm({ ...form, country: e.target.value })}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="a-postal">{t.checkout.postalCode}</Label>
+              <Label htmlFor={`${uid}-postal`}>{t.checkout.postalCode}</Label>
               <Input
-                id="a-postal"
+                id={`${uid}-postal`}
                 value={form.postalCode}
                 onChange={(e) => setForm({ ...form, postalCode: e.target.value })}
               />
@@ -158,11 +178,11 @@ export function AddressFormDialog({
           </div>
           <div className="flex items-center gap-2">
             <Checkbox
-              id="a-default"
+              id={`${uid}-default`}
               checked={form.isDefault}
               onCheckedChange={(c) => setForm({ ...form, isDefault: c === true })}
             />
-            <Label htmlFor="a-default" className="text-sm font-normal">
+            <Label htmlFor={`${uid}-default`} className="text-sm font-normal">
               {t.checkout.makeDefault}
             </Label>
           </div>
@@ -171,6 +191,7 @@ export function AddressFormDialog({
               {t.common.cancel}
             </Button>
             <Button type="submit" disabled={pending}>
+              {pending && <Loader2 className="h-4 w-4 animate-spin" />}
               {t.checkout.saveAddress}
             </Button>
           </DialogFooter>

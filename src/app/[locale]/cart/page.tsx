@@ -4,15 +4,22 @@ import { redirect } from "next/navigation";
 import { ShoppingCart } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { link } from "@/lib/links";
-import { computeOrderTotals } from "@/lib/commerce";
+import { computeOrderTotals, FREE_SHIPPING_THRESHOLD_MINOR } from "@/lib/commerce";
 import { formatMoney } from "@/lib/money";
 import { CartItemRow } from "@/components/cart/cart-item-row";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
-export const metadata: Metadata = { title: "Cart" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "cart") };
+}
 
 export default async function CartPage({
   params,
@@ -99,28 +106,48 @@ export default async function CartPage({
         <aside className="h-fit rounded-lg border p-5 lg:sticky lg:top-20">
           <h2 className="font-bold">{t.cart.orderSummary}</h2>
           <div className="mt-4 space-y-2 text-sm">
+            {totals.subtotal < FREE_SHIPPING_THRESHOLD_MINOR && (
+              <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+                {t.cart.freeShippingHint.replace(
+                  "{amount}",
+                  formatMoney(FREE_SHIPPING_THRESHOLD_MINOR - totals.subtotal, undefined, locale),
+                )}
+              </p>
+            )}
             <div className="flex justify-between">
               <span className="text-muted-foreground">{t.common.subtotal}</span>
-              <span>{formatMoney(totals.subtotal)}</span>
+              <span>{formatMoney(totals.subtotal, undefined, locale)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">{t.common.shipping}</span>
-              <span>{totals.shippingFee === 0 ? t.common.free : formatMoney(totals.shippingFee)}</span>
+              <span>{totals.shippingFee === 0 ? t.common.free : formatMoney(totals.shippingFee, undefined, locale)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">{t.common.tax}</span>
-              <span>{formatMoney(totals.taxAmount)}</span>
+              <span>{formatMoney(totals.taxAmount, undefined, locale)}</span>
             </div>
             <Separator className="my-3" />
             <div className="flex justify-between text-base font-bold">
               <span>{t.common.total}</span>
-              <span>{formatMoney(totals.total)}</span>
+              <span>{formatMoney(totals.total, undefined, locale)}</span>
             </div>
           </div>
           <Button asChild size="lg" className="mt-5 w-full">
             <Link href={link(locale, "/checkout")}>{t.cart.checkout}</Link>
           </Button>
         </aside>
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 lg:hidden">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-xs text-muted-foreground">{t.common.total}</p>
+            <p className="text-lg font-bold">{formatMoney(totals.total, undefined, locale)}</p>
+          </div>
+          <Button asChild size="lg" className="flex-1">
+            <Link href={link(locale, "/checkout")}>{t.cart.checkout}</Link>
+          </Button>
+        </div>
       </div>
     </div>
   );

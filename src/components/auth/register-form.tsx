@@ -27,25 +27,33 @@ export function RegisterForm() {
   function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (name.trim().length < 2) {
+      setError(t.auth.registerError);
+      return;
+    }
     if (password.length < 6) {
       setError(t.auth.passwordHint);
       return;
     }
     startTransition(async () => {
-      const res = await registerUser(locale, {
-        name,
-        email,
-        phone,
-        password,
-        becomeVendor,
-      });
-      if (res && !res.ok) {
+      try {
+        const res = await registerUser(locale, {
+          name,
+          email,
+          phone,
+          password,
+          becomeVendor,
+        });
+        if (res && !res.ok) {
+          setError(t.auth.registerError);
+          return;
+        }
+        toast.success(t.common.success);
+        router.push(link(locale, becomeVendor ? "/vendor" : "/account"));
+        router.refresh();
+      } catch {
         setError(t.auth.registerError);
-        return;
       }
-      toast.success(t.common.success);
-      router.push(link(locale, becomeVendor ? "/vendor" : "/account"));
-      router.refresh();
     });
   }
 

@@ -18,7 +18,7 @@ import { locales, localeNames, type Locale } from "@/i18n/config";
 import { link } from "@/lib/links";
 
 export function LocaleSwitcher() {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -32,7 +32,7 @@ export function LocaleSwitcher() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Language">
+        <Button variant="ghost" size="icon" aria-label={t.nav.locale}>
           <Languages className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
@@ -64,7 +64,6 @@ export function UserMenu({
   locale: Locale;
 }) {
   const t = useI18n().t;
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -101,7 +100,7 @@ export function UserMenu({
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="gap-2 px-2">
           <User className="h-4 w-4" />
-          <span className="hidden max-w-28 truncate sm:inline-block">{name}</span>
+          <span className="hidden max-w-40 truncate sm:inline-block">{name}</span>
           <ChevronDown className="hidden h-3.5 w-3.5 sm:inline-block" />
         </Button>
       </DropdownMenuTrigger>
@@ -127,13 +126,13 @@ export function UserMenu({
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href={link(locale, "/support")} className="cursor-pointer">
+          <Link href={link(locale, "/account/support")} className="cursor-pointer">
             {t.nav.support}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={logout} disabled={pending} className="text-destructive">
-          <LogOut className="h-4 w-4" />
+          <LogOut className="h-4 w-4 rtl:-scale-x-100" />
           {t.nav.logout}
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -154,27 +153,41 @@ export function MobileMenu({ locale }: { locale: Locale }) {
     { href: "/category/spare-parts", label: t.nav.spareParts },
     { href: "/wishlist", label: t.nav.wishlist },
     { href: "/compare", label: t.nav.compare },
-    { href: "/support", label: t.nav.support },
+    { href: "/account/support", label: t.nav.support },
   ];
 
   return (
     <div className="lg:hidden">
-      <Button variant="ghost" size="icon" onClick={() => setOpen(!open)} aria-label={t.nav.menu}>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => setOpen(!open)}
+        aria-label={t.nav.menu}
+        aria-expanded={open}
+        aria-controls="mobile-menu-panel"
+      >
         <Menu className="h-5 w-5" />
       </Button>
       {open && (
-        <div className="absolute inset-x-0 top-16 z-40 border-b bg-background p-4 shadow-lg">
+        <div id="mobile-menu-panel" className="absolute inset-x-0 top-full z-40 max-h-[calc(100vh-4rem)] overflow-y-auto border-b bg-background p-4 shadow-lg">
           <div className="container grid gap-1">
             {items.map((item) => (
               <Link
                 key={item.href}
                 href={link(locale, item.href)}
                 onClick={() => setOpen(false)}
-                className="rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
+                className="rounded-md px-3 py-2.5 text-sm font-medium hover:bg-accent"
               >
                 {item.label}
               </Link>
             ))}
+            <Link
+              href={link(locale, "/account")}
+              onClick={() => setOpen(false)}
+              className="rounded-md px-3 py-2.5 text-sm font-medium hover:bg-accent"
+            >
+              {t.nav.account}
+            </Link>
           </div>
         </div>
       )}

@@ -35,7 +35,7 @@ export function VendorNav() {
   ];
 
   return (
-    <nav className="space-y-1">
+    <nav className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0 lg:space-y-1">
       {nav.map((item) => {
         const href = link(locale, item.href);
         const isActive =
@@ -47,7 +47,7 @@ export function VendorNav() {
             key={item.href}
             href={href}
             className={cn(
-              "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent",
+              "flex shrink-0 items-center gap-2 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium hover:bg-accent",
               isActive && "bg-accent text-accent-foreground",
             )}
           >

@@ -25,53 +25,60 @@ export async function saveAddress(locale: string, input: z.infer<typeof addressS
   if (!user) redirect(link(locale, "/auth/login"));
   const parsed = addressSchema.parse(input);
 
+  // Default-address change is done in a single transaction: unset-all then
+  // set-one. Combined with the unique index on (userId, isDefault) this
+  // prevents two concurrent saves from both becoming the default.
   if (parsed.id) {
     const existing = await prisma.address.findFirst({
       where: { id: parsed.id, userId: user.id },
     });
-    if (!existing) throw new Error("Address not found");
-    if (parsed.isDefault) {
-      await prisma.address.updateMany({
-        where: { userId: user.id },
-        data: { isDefault: false },
+    if (!existing) throw new Error("addressNotFound");
+    await prisma.$transaction(async (tx) => {
+      if (parsed.isDefault) {
+        await tx.address.updateMany({
+          where: { userId: user.id },
+          data: { isDefault: false },
+        });
+      }
+      await tx.address.update({
+        where: { id: parsed.id },
+        data: {
+          fullName: parsed.fullName,
+          phone: parsed.phone,
+          line1: parsed.line1,
+          line2: parsed.line2 || null,
+          city: parsed.city,
+          state: parsed.state || null,
+          postalCode: parsed.postalCode || null,
+          country: parsed.country,
+          isDefault: parsed.isDefault ?? existing.isDefault,
+        },
       });
-    }
-    await prisma.address.update({
-      where: { id: parsed.id },
-      data: {
-        fullName: parsed.fullName,
-        phone: parsed.phone,
-        line1: parsed.line1,
-        line2: parsed.line2 || null,
-        city: parsed.city,
-        state: parsed.state || null,
-        postalCode: parsed.postalCode || null,
-        country: parsed.country,
-        isDefault: parsed.isDefault ?? existing.isDefault,
-      },
     });
   } else {
     const count = await prisma.address.count({ where: { userId: user.id } });
     const isDefault = parsed.isDefault || count === 0;
-    if (isDefault) {
-      await prisma.address.updateMany({
-        where: { userId: user.id },
-        data: { isDefault: false },
+    await prisma.$transaction(async (tx) => {
+      if (isDefault) {
+        await tx.address.updateMany({
+          where: { userId: user.id },
+          data: { isDefault: false },
+        });
+      }
+      await tx.address.create({
+        data: {
+          userId: user.id,
+          fullName: parsed.fullName,
+          phone: parsed.phone,
+          line1: parsed.line1,
+          line2: parsed.line2 || null,
+          city: parsed.city,
+          state: parsed.state || null,
+          postalCode: parsed.postalCode || null,
+          country: parsed.country,
+          isDefault,
+        },
       });
-    }
-    await prisma.address.create({
-      data: {
-        userId: user.id,
-        fullName: parsed.fullName,
-        phone: parsed.phone,
-        line1: parsed.line1,
-        line2: parsed.line2 || null,
-        city: parsed.city,
-        state: parsed.state || null,
-        postalCode: parsed.postalCode || null,
-        country: parsed.country,
-        isDefault,
-      },
     });
   }
 
@@ -83,7 +90,7 @@ export async function deleteAddress(locale: string, id: string) {
   const user = await getCurrentUser();
   if (!user) redirect(link(locale, "/auth/login"));
   const existing = await prisma.address.findFirst({ where: { id, userId: user.id } });
-  if (!existing) throw new Error("Address not found");
+  if (!existing) throw new Error("addressNotFound");
   await prisma.address.delete({ where: { id } });
   revalidatePath("/", "layout");
   return { ok: true };

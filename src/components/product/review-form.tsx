@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Star } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/i18n/client";
+import { getErrorMessage } from "@/i18n/errors";
 import { submitReview } from "@/lib/actions/review-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +23,7 @@ export function ReviewForm({
   locale: string;
 }) {
   const { t } = useI18n();
+  const router = useRouter();
   const [rating, setRating] = useState(5);
   const [hover, setHover] = useState(0);
   const [title, setTitle] = useState("");
@@ -29,7 +32,7 @@ export function ReviewForm({
 
   function submit() {
     if (body.trim().length < 10) {
-      toast.error(t.product.reviews.replace("{count}", ""));
+      toast.error(t.product.reviewTooShort);
       return;
     }
     startTransition(async () => {
@@ -45,22 +48,27 @@ export function ReviewForm({
         setTitle("");
         setBody("");
         setRating(5);
+        router.refresh();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : t.common.error);
+        toast.error(getErrorMessage(err, t));
       }
     });
   }
 
   return (
     <div className="space-y-4 rounded-lg border p-4">
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1" role="radiogroup" aria-label={t.product.writeReview}>
         {[1, 2, 3, 4, 5].map((n) => (
           <button
             key={n}
             type="button"
+            role="radio"
+            aria-checked={rating === n}
+            aria-label={`${t.product.rate} ${n} ${t.common.of} 5`}
             onMouseEnter={() => setHover(n)}
             onMouseLeave={() => setHover(0)}
             onClick={() => setRating(n)}
+            className="rounded-sm p-1"
           >
             <Star
               className={cn(

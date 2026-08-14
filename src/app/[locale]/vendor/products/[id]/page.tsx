@@ -1,11 +1,18 @@
 import { notFound } from "next/navigation";
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { getCurrentVendor } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { fromMinor } from "@/lib/money";
 import { ProductForm } from "@/components/vendor/product-form";
 
-export const metadata = { title: "Edit product" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; id: string }>;
+}) {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "vendorProductEdit") };
+}
 
 export default async function EditProductPage({
   params,

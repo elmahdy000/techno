@@ -32,6 +32,7 @@ export function SearchBar() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={t.nav.searchPlaceholder}
+          aria-label={t.nav.search}
           className="ps-9"
         />
       </div>

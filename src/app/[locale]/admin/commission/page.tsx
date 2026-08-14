@@ -1,4 +1,4 @@
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { prisma } from "@/lib/prisma";
 import { getDefaultCommissionRate, getVendorCommissionRate } from "@/lib/commerce";
 import { formatMoney } from "@/lib/money";
@@ -17,7 +17,14 @@ import {
   VendorCommissionForm,
 } from "@/components/admin/commission-form";
 
-export const metadata = { title: "Commission settings" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "adminCommission") };
+}
 
 export default async function AdminCommissionPage({
   params,
@@ -94,7 +101,7 @@ export default async function AdminCommissionPage({
           <CardTitle className="text-base">{t.admin.vendorCommissionRates}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <Table>
+          <Table className="min-w-[640px]">
             <TableHeader>
               <TableRow>
                 <TableHead>{t.common.name}</TableHead>
@@ -115,7 +122,7 @@ export default async function AdminCommissionPage({
                     <TableCell>
                       <Badge variant={v.commissionRate != null ? "default" : "outline"}>
                         {(rate * 100).toFixed(1)}%
-                        {v.commissionRate != null && <span className="ms-1 text-[9px]">custom</span>}
+                        {v.commissionRate != null && <span className="ms-1 text-[9px]">{t.admin.customRate}</span>}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-end">

@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { Plus, Pencil, Trash2 } from "lucide-react";
-import { getDictionary } from "@/i18n/get-dictionary";
+import { Plus, Pencil } from "lucide-react";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { getCurrentVendor } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { link } from "@/lib/links";
@@ -8,10 +8,17 @@ import { pickL } from "@/lib/links";
 import { formatMoney } from "@/lib/money";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { DeleteProductButton } from "@/components/vendor/delete-product-button";
 
-export const metadata = { title: "My products" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "vendorProducts") };
+}
 
 const STATUS_LABEL_KEY: Record<string, string> = {
   DRAFT: "productStatusDraft",
@@ -53,7 +60,9 @@ export default async function VendorProductsPage({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">{t.vendor.products}</h1>
-          <p className="text-sm text-muted-foreground">{products.length} items</p>
+          <p className="text-sm text-muted-foreground">
+            {t.vendor.itemsCount.replace("{count}", String(products.length))}
+          </p>
         </div>
         <Button asChild>
           <Link href={link(locale, "/vendor/products/new")}>

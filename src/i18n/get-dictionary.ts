@@ -9,3 +9,10 @@ export function getDictionary(locale: string | undefined): Dictionary {
   const l = locale ?? "";
   return isLocale(l) ? dictionaries[l] : en;
 }
+
+export function pageTitle(
+  locale: string | undefined,
+  key: keyof Dictionary["titles"],
+): string {
+  return getDictionary(locale).titles[key];
+}

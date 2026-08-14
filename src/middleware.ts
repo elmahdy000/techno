@@ -17,7 +17,15 @@ export function middleware(request: NextRequest) {
   const pathnameHasLocale = locales.some(
     (loc) => pathname === `/${loc}` || pathname.startsWith(`/${loc}/`),
   );
-  if (pathnameHasLocale) return NextResponse.next();
+  if (pathnameHasLocale) {
+    // Forward the locale from the URL so the root layout can set dir/lang
+    // correctly even when the user lands directly on a localized route
+    // without a locale cookie (e.g. a shared /ar/... link).
+    const locale = pathname.split("/")[1] as (typeof locales)[number];
+    const response = NextResponse.next();
+    response.headers.set("x-locale", locale);
+    return response;
+  }
 
   const locale = getLocale(request);
   const url = request.nextUrl.clone();

@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useI18n } from "@/i18n/client";
+import { getErrorMessage } from "@/i18n/errors";
 import { moderateReview } from "@/lib/actions/admin-actions";
 import { Button } from "@/components/ui/button";
 
@@ -27,7 +28,7 @@ export function ReviewModerationButtons({
         toast.success(t.common.success);
         router.refresh();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : t.common.error);
+        toast.error(getErrorMessage(err, t));
       }
     });
   }
@@ -36,10 +37,10 @@ export function ReviewModerationButtons({
     return (
       <div className="flex gap-2">
         <Button size="sm" variant="success" disabled={pending} onClick={() => run("PUBLISH")}>
-          {t.common.confirm}
+          {t.admin.publish}
         </Button>
         <Button size="sm" variant="destructive" disabled={pending} onClick={() => run("REJECT")}>
-          {t.common.cancel}
+          {t.admin.reject}
         </Button>
       </div>
     );
@@ -47,13 +48,13 @@ export function ReviewModerationButtons({
   if (status === "REJECTED") {
     return (
       <Button size="sm" variant="outline" disabled={pending} onClick={() => run("PUBLISH")}>
-        {t.common.confirm}
+        {t.admin.publish}
       </Button>
     );
   }
   return (
     <Button size="sm" variant="outline" disabled={pending} onClick={() => run("REJECT")}>
-      Reject
+      {t.admin.reject}
     </Button>
   );
 }

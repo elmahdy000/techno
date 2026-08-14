@@ -1,8 +1,15 @@
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { getCurrentVendor } from "@/lib/session";
 import { VendorProfileForm } from "@/components/vendor/profile-form";
 
-export const metadata = { title: "Store profile" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "vendorProfile") };
+}
 
 export default async function VendorProfilePage({
   params,

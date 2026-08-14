@@ -14,23 +14,65 @@ export function placeholderUrl(text: string): string {
 
 const EXT_BY_MIME: Record<string, string> = {
   "image/jpeg": "jpg",
-  "image/jpg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
   "image/gif": "gif",
-  "image/svg+xml": "svg",
 };
+
+export type AllowedImageMime = keyof typeof EXT_BY_MIME;
+
+// Sniff the real image type from magic bytes instead of trusting the
+// client-supplied MIME header. SVGs are intentionally rejected because they
+// can carry active script content (stored-XSS).
+export function sniffImageType(buffer: Buffer): AllowedImageMime | null {
+  if (
+    buffer.length >= 3 &&
+    buffer[0] === 0xff &&
+    buffer[1] === 0xd8 &&
+    buffer[2] === 0xff
+  ) {
+    return "image/jpeg";
+  }
+  if (
+    buffer.length >= 8 &&
+    buffer.readUInt32BE(0) === 0x89504e47 &&
+    buffer.readUInt32BE(4) === 0x0d0a1a0a
+  ) {
+    return "image/png";
+  }
+  if (
+    buffer.length >= 12 &&
+    buffer.toString("ascii", 0, 4) === "RIFF" &&
+    buffer.toString("ascii", 8, 12) === "WEBP"
+  ) {
+    return "image/webp";
+  }
+  if (
+    buffer.length >= 6 &&
+    (buffer.toString("ascii", 0, 4) === "GIF87" ||
+      buffer.toString("ascii", 0, 4) === "GIF89")
+  ) {
+    return "image/gif";
+  }
+  return null;
+}
 
 export async function saveImage(
   buffer: Buffer,
-  mimeType: string,
-  alt?: string,
+  _mimeType: string,
+  _alt?: string,
 ): Promise<SavedImage> {
-  const ext = EXT_BY_MIME[mimeType] ?? "bin";
+  // Only raster image MIME types we have whitelisted; never store raw uploads
+  // under an extension that a browser could interpret as executable content.
+  const detected = sniffImageType(buffer);
+  if (!detected) {
+    throw new Error("imagesOnly");
+  }
+  const ext = EXT_BY_MIME[detected];
   const store = process.env.UPLOAD_STORE ?? "local";
 
   if (store === "cloudinary") {
-    return saveToCloudinary(buffer, mimeType);
+    return saveToCloudinary(buffer, detected);
   }
 
   const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR ?? "uploads");

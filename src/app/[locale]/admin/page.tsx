@@ -1,9 +1,17 @@
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { prisma } from "@/lib/prisma";
 import { formatMoney } from "@/lib/money";
 import { Card, CardContent } from "@/components/ui/card";
+import { statusBadge } from "@/components/order/status";
 
-export const metadata = { title: "Admin overview" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "admin") };
+}
 
 export default async function AdminOverviewPage({
   params,
@@ -62,19 +70,19 @@ export default async function AdminOverviewPage({
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Vendors pending</p>
+            <p className="text-xs text-muted-foreground">{t.admin.pendingVendors}</p>
             <p className="mt-1 text-2xl font-bold">{pendingVendors}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Withdrawals pending</p>
+            <p className="text-xs text-muted-foreground">{t.admin.pendingWithdrawals}</p>
             <p className="mt-1 text-2xl font-bold">{pendingWithdrawals}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Open tickets</p>
+            <p className="text-xs text-muted-foreground">{t.admin.openTickets}</p>
             <p className="mt-1 text-2xl font-bold">{openTickets}</p>
           </CardContent>
         </Card>
@@ -82,7 +90,7 @@ export default async function AdminOverviewPage({
 
       <Card>
         <CardContent className="p-4">
-          <p className="mb-3 text-sm font-semibold">Recent orders</p>
+          <p className="mb-3 text-sm font-semibold">{t.admin.recentOrders}</p>
           {recentOrders.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t.vendor.noOrders}</p>
           ) : (
@@ -95,7 +103,7 @@ export default async function AdminOverviewPage({
                   </div>
                   <div className="text-end">
                     <p className="text-sm font-semibold">{formatMoney(o.total)}</p>
-                    <p className="text-xs text-muted-foreground">{o.status}</p>
+                    <p className="text-xs text-muted-foreground">{statusBadge(o.status, t, "sm")}</p>
                   </div>
                 </li>
               ))}

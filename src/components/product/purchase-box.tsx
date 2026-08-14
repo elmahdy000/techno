@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/i18n/client";
+import { getErrorMessage } from "@/i18n/errors";
 import { link } from "@/lib/links";
 import { formatMoney } from "@/lib/money";
 import { addToCart } from "@/lib/actions/cart-actions";
@@ -71,7 +72,7 @@ export function PurchaseBox({
       await addToCart(locale, { variantId: selected.id, quantity: 1 });
       router.push(link(locale, "/checkout"));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t.common.error);
+      toast.error(getErrorMessage(err, t));
       setBuying(false);
     }
   }
@@ -109,10 +110,10 @@ export function PurchaseBox({
       <div className="flex items-baseline gap-3">
         {selected && (
           <>
-            <span className="text-2xl font-bold">{formatMoney(selected.price)}</span>
+            <span className="text-2xl font-bold">{formatMoney(selected.price, undefined, locale)}</span>
             {selected.compareAtPrice && selected.compareAtPrice > selected.price && (
               <span className="text-muted-foreground line-through">
-                {formatMoney(selected.compareAtPrice)}
+                {formatMoney(selected.compareAtPrice, undefined, locale)}
               </span>
             )}
           </>

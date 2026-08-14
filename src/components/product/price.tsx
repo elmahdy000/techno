@@ -6,13 +6,15 @@ export function Price({
   compareAtPrice,
   className,
   short,
+  locale = "en",
 }: {
   price: number;
   compareAtPrice?: number | null;
   className?: string;
   short?: boolean;
+  locale?: string;
 }) {
-  const fmt = short ? formatMoneyShort : formatMoney;
+  const fmt = (n: number) => (short ? formatMoneyShort : formatMoney)(n, undefined, locale);
   return (
     <div className={cn("flex flex-wrap items-baseline gap-2", className)}>
       <span className="text-base font-bold">{fmt(price)}</span>

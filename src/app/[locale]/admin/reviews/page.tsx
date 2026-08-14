@@ -1,4 +1,4 @@
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { prisma } from "@/lib/prisma";
 import { pickL, link } from "@/lib/links";
 import { Badge } from "@/components/ui/badge";
@@ -6,12 +6,25 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Rating } from "@/components/product/rating";
 import { ReviewModerationButtons } from "@/components/admin/review-moderation-buttons";
 
-export const metadata = { title: "Review moderation" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "adminReviews") };
+}
 
 const STATUS_VARIANT: Record<string, "secondary" | "success" | "destructive"> = {
   PENDING: "secondary",
   PUBLISHED: "success",
   REJECTED: "destructive",
+};
+
+const STATUS_KEY: Record<string, string> = {
+  PENDING: "statusPending",
+  PUBLISHED: "statusPublished",
+  REJECTED: "statusRejected",
 };
 
 export default async function AdminReviewsPage({
@@ -42,16 +55,18 @@ export default async function AdminReviewsPage({
 
   const tabs = [
     { key: undefined, label: t.common.all },
-    { key: "PENDING", label: `Pending (${pendingCount})` },
-    { key: "PUBLISHED", label: "Published" },
-    { key: "REJECTED", label: "Rejected" },
+    { key: "PENDING", label: `${t.admin.statusPending} (${pendingCount})` },
+    { key: "PUBLISHED", label: t.admin.statusPublished },
+    { key: "REJECTED", label: t.admin.statusRejected },
   ];
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">{t.admin.reviews}</h1>
-        <p className="text-sm text-muted-foreground">{reviews.length} reviews</p>
+        <p className="text-sm text-muted-foreground">
+          {t.admin.reviewsCount.replace("{count}", String(reviews.length))}
+        </p>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -97,7 +112,9 @@ export default async function AdminReviewsPage({
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant={STATUS_VARIANT[r.status]}>{r.status}</Badge>
+                    <Badge variant={STATUS_VARIANT[r.status]}>
+                      {t.admin[STATUS_KEY[r.status] as keyof typeof t.admin] as unknown as string}
+                    </Badge>
                     <span className="text-xs text-muted-foreground">
                       {new Date(r.createdAt).toLocaleDateString(locale === "ar" ? "ar-EG" : "en-US")}
                     </span>

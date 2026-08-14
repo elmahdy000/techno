@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ShieldCheck, Star } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
-import { getDictionary } from "@/i18n/get-dictionary";
-import { pickL, link } from "@/lib/links";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
+import { pickL } from "@/lib/links";
 import { ImageGallery } from "@/components/product/image-gallery";
 import { PurchaseBox } from "@/components/product/purchase-box";
 import { WishlistButton } from "@/components/product/wishlist-button";
@@ -20,13 +20,13 @@ export async function generateMetadata({
 }: {
   params: Promise<{ locale: string; slug: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params;
+  const { locale, slug } = await params;
   const product = await prisma.product.findUnique({
     where: { slug },
     select: { name: true, shortDescription: true },
   });
   return {
-    title: product?.name ?? "Product",
+    title: product?.name ?? pageTitle(locale, "product"),
     description: product?.shortDescription ?? undefined,
   };
 }
@@ -249,7 +249,7 @@ export default async function ProductPage({
           <Separator className="my-10" />
           <section>
             <h2 className="mb-5 text-xl font-bold">{t.product.related}</h2>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
               {related.map((p) => (
                 <ProductCard key={p.id} product={p} locale={locale} inWishlist={false} />
               ))}

@@ -53,7 +53,6 @@ export function CompareView() {
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const specNames = useMemo(() => {
@@ -139,10 +138,10 @@ export function CompareView() {
             <td className="border-t p-3 font-medium text-muted-foreground">{t.common.price}</td>
             {products.map((p) => (
               <td key={p.id} className="border-t p-3 font-bold">
-                {formatMoneyClient(p.price)}
+                {formatMoneyClient(p.price, locale)}
                 {p.compareAtPrice && p.compareAtPrice > p.price && (
                   <span className="ms-2 text-xs font-normal text-muted-foreground line-through">
-                    {formatMoneyClient(p.compareAtPrice)}
+                    {formatMoneyClient(p.compareAtPrice, locale)}
                   </span>
                 )}
               </td>

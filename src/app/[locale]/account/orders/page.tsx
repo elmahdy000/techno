@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { link } from "@/lib/links";
@@ -9,7 +9,14 @@ import { statusBadge, payStatusLabel } from "@/components/order/status";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
-export const metadata: Metadata = { title: "Orders" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "accountOrders") };
+}
 
 export default async function OrdersPage({
   params,
@@ -61,7 +68,7 @@ export default async function OrdersPage({
               <div className="flex flex-wrap items-center gap-2">
                 {statusBadge(o.status, t)}
                 <Badge variant="outline">{payStatusLabel(o.paymentStatus, t)}</Badge>
-                <span className="text-sm font-bold">{formatMoney(o.total)}</span>
+                <span className="text-sm font-bold">{formatMoney(o.total, undefined, locale)}</span>
               </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">

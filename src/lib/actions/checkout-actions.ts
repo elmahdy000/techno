@@ -31,7 +31,7 @@ export async function placeOrder(
   const address = await prisma.address.findFirst({
     where: { id: parsed.addressId, userId: user.id },
   });
-  if (!address) throw new Error("Shipping address not found");
+  if (!address) throw new Error("shippingAddressNotFound");
 
   const cart = await prisma.cart.findUnique({
     where: { userId: user.id },
@@ -46,7 +46,7 @@ export async function placeOrder(
   });
 
   const items = (cart?.items ?? []).filter((i) => i.variant.active && i.variant.product.status === "ACTIVE");
-  if (items.length === 0) throw new Error("Your cart is empty");
+  if (items.length === 0) throw new Error("cartEmpty");
 
   const defaultRate = await getDefaultCommissionRate();
   const vendorIds = Array.from(new Set(items.map((i) => i.variant.product.vendorId)));
@@ -59,6 +59,15 @@ export async function placeOrder(
 
   const orderNumber = nextOrderNumber();
 
+  // Card payments are simulated only when MOCK_PAYMENTS is enabled (defaults to
+  // true outside production). In production, without an enabled mock flag, CARD
+  // orders are created UNPAID/PENDING until a real payment gateway confirms —
+  // vendors are never credited for unpaid orders.
+  const mockPayments = process.env.MOCK_PAYMENTS !== "false";
+  const cardPaid = parsed.paymentMethod === "CARD" && mockPayments;
+  const paymentStatus = cardPaid ? "PAID" : "UNPAID";
+  const orderStatus = cardPaid ? "CONFIRMED" : "PENDING";
+
   const order = await prisma.$transaction(async (tx) => {
     // Stock check & reserve (atomic decrement)
     for (const item of items) {
@@ -67,7 +76,7 @@ export async function placeOrder(
         data: { stock: { decrement: item.quantity } },
       });
       if (updated.count === 0) {
-        throw new Error(`"${item.product.name}" is no longer available in the requested quantity`);
+        throw new Error(`stockChanged:${item.product.name}`);
       }
     }
 
@@ -75,13 +84,12 @@ export async function placeOrder(
       data: {
         orderNumber,
         userId: user.id,
-        status: parsed.paymentMethod === "COD" ? "PENDING" : "CONFIRMED",
-        paymentStatus: parsed.paymentMethod === "COD" ? "UNPAID" : "PAID",
+        status: orderStatus,
+        paymentStatus,
         paymentMethod: parsed.paymentMethod,
-        paymentReference:
-          parsed.paymentMethod === "CARD"
-            ? `SIM-${Math.random().toString(36).slice(2, 12).toUpperCase()}`
-            : null,
+        paymentReference: cardPaid
+          ? `SIM-${Math.random().toString(36).slice(2, 12).toUpperCase()}`
+          : null,
         address: {
           fullName: address.fullName,
           phone: address.phone,
@@ -142,27 +150,32 @@ export async function placeOrder(
           data: { soldCount: { increment: item.quantity }, totalStock: { decrement: item.quantity } },
         });
 
+        const variantAfter = await tx.variant.findUnique({
+          where: { id: item.variantId },
+          select: { stock: true },
+        });
+
         await tx.inventoryLog.create({
           data: {
             productId: item.productId,
             variantId: item.variantId,
             vendorId,
             change: -item.quantity,
-            stockAfter: item.variant.stock - item.quantity,
+            stockAfter: variantAfter?.stock ?? 0,
             reason: `Order ${orderNumber}`,
             type: "SALE",
             reference: created.id,
           },
         });
 
-        // Credit pending wallet balance for paid orders
-        if (created.paymentStatus === "PAID") {
+        // Credit pending wallet balance for paid orders only
+        if (paymentStatus === "PAID") {
           const wallet = await tx.wallet.upsert({
             where: { vendorId },
             create: { vendorId },
             update: {},
           });
-          await tx.wallet.update({
+          const updatedWallet = await tx.wallet.update({
             where: { id: wallet.id },
             data: { pendingBalance: { increment: commission.vendorNet } },
           });
@@ -175,7 +188,7 @@ export async function placeOrder(
               vendorId,
               type: "ORDER_CREDIT",
               amount: commission.vendorNet,
-              balanceAfter: wallet.pendingBalance + commission.vendorNet,
+              balanceAfter: updatedWallet.pendingBalance,
               orderItemId: orderItem.id,
               reference: orderNumber,
               description: "Order credit (pending settlement)",
@@ -183,6 +196,18 @@ export async function placeOrder(
           });
         }
       }
+
+      // Vendor notification created inside the transaction so a failed insert
+      // rolls the order back instead of creating a duplicate on retry.
+      await tx.notification.create({
+        data: {
+          vendorId,
+          type: "ORDER",
+          title: "New order received",
+          body: `You have items in order ${orderNumber}`,
+          link: "/vendor/orders",
+        },
+      });
     }
 
     await tx.orderStatusHistory.create({
@@ -198,19 +223,6 @@ export async function placeOrder(
 
     return created;
   });
-
-  // Notifications for vendors (outside transaction)
-  for (const vendorId of vendorIds) {
-    await prisma.notification.create({
-      data: {
-        vendorId,
-        type: "ORDER",
-        title: "New order received",
-        body: `You have items in order ${orderNumber}`,
-        link: "/vendor/orders",
-      },
-    });
-  }
 
   revalidatePath("/", "layout");
   redirect(link(locale, `/account/orders/${order.id}`));

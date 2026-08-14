@@ -1,5 +1,6 @@
 import { PrismaClient, type Role, type ProductStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { randomBytes } from "node:crypto";
 import {
   PERMISSION_DEFS,
   ROLE_PERMISSIONS,
@@ -11,7 +12,6 @@ import {
   computeOrderTotals,
   nextOrderNumber,
   getDefaultCommissionRate,
-  getVendorCommissionRate,
 } from "../src/lib/commerce";
 import { placeholderUrl } from "../src/lib/store/image-store";
 import { slugify, generateUniqueSuffix } from "../src/lib/utils";
@@ -57,8 +57,8 @@ async function seedPermissions() {
 async function seedConfig() {
   const configs = [
     { key: "default_commission_rate", value: 0.07, description: "Platform commission rate (7%)" },
-    { key: "free_shipping_threshold", value: 5000, description: "Free shipping above this amount (EGP)" },
-    { key: "shipping_fee", value: 100, description: "Flat shipping fee (EGP)" },
+    { key: "free_shipping_threshold", value: 5_000_00, description: "Free shipping above this amount (minor units)" },
+    { key: "shipping_fee", value: 100_00, description: "Flat shipping fee (minor units)" },
   ];
   for (const c of configs) {
     await prisma.commissionConfig.upsert({
@@ -70,7 +70,8 @@ async function seedConfig() {
 }
 
 async function seedUsers() {
-  const passwordHash = await bcrypt.hash("password123", 10);
+  const seedPassword = process.env.SEED_PASSWORD ?? "password123";
+  const passwordHash = await bcrypt.hash(seedPassword, 10);
 
   const users = [
     { name: "System Admin", email: "admin@technomarket.eg", role: "SUPER_ADMIN" },
@@ -921,7 +922,6 @@ async function seedProducts(
   categoryIds: Record<string, string>,
   attributeIds: Record<string, string>,
 ) {
-  const defaultRate = await getDefaultCommissionRate();
   const vendorCache = new Map<string, { id: string; commissionRate: number | null }>();
   for (const v of Object.values(vendorIds)) {
     const vendor = await prisma.vendor.findUnique({ where: { id: v } });
@@ -1033,7 +1033,19 @@ async function seedDemoData(
   const customerId = userIds["yasmine@example.com"];
   const vendor1 = vendorIds["ahmed@niletech.eg"];
   const vendor2 = vendorIds["sara@caitech.eg"];
-  const vendor3 = vendorIds["omar@digiparts.eg"];
+
+  const existingTicket = await prisma.supportTicket.findUnique({
+    where: { ticketNumber: "TKT-0001" },
+    select: { id: true },
+  });
+  const existingOrder = await prisma.order.findFirst({
+    where: { userId: customerId },
+    select: { id: true },
+  });
+  if (existingTicket || existingOrder) {
+    console.log("Demo data already present, skipping demo seed.");
+    return;
+  }
 
   const productOf = async (name: string) => {
     return prisma.product.findFirstOrThrow({
@@ -1207,7 +1219,7 @@ async function seedDemoData(
         commissionAmount: commission.commissionAmount,
         vendorNet: commission.vendorNet,
         shippingStatus: "SHIPPED",
-        trackingNumber: `TRK${Math.floor(100000000 + Math.random() * 899999999)}`,
+        trackingNumber: `TRK${randomBytes(5).toString("hex").toUpperCase()}`,
         trackingCarrier: "Aramex",
         shippedAt,
       },

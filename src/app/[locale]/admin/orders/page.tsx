@@ -1,4 +1,4 @@
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { prisma } from "@/lib/prisma";
 import { link } from "@/lib/links";
 import { formatMoney } from "@/lib/money";
@@ -14,7 +14,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-export const metadata = { title: "Admin orders" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "adminOrders") };
+}
 
 export default async function AdminOrdersPage({
   params,
@@ -67,7 +74,9 @@ export default async function AdminOrdersPage({
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">{t.admin.orders}</h1>
-        <p className="text-sm text-muted-foreground">{orders.length} orders</p>
+        <p className="text-sm text-muted-foreground">
+          {t.admin.ordersCount.replace("{count}", String(orders.length))}
+        </p>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -95,7 +104,7 @@ export default async function AdminOrdersPage({
 
       <Card>
         <CardContent className="p-0">
-          <Table>
+          <Table className="min-w-[720px]">
             <TableHeader>
               <TableRow>
                 <TableHead>{t.order.orderNumber}</TableHead>

@@ -1,5 +1,5 @@
 import { CheckCheck } from "lucide-react";
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { getCurrentVendor } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { markVendorNotificationsRead } from "@/lib/actions/vendor-actions";
@@ -7,7 +7,14 @@ import { link } from "@/lib/links";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
-export const metadata = { title: "Notifications" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "vendorNotifications") };
+}
 
 export default async function VendorNotificationsPage({
   params,

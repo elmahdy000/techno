@@ -1,14 +1,20 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getDictionary } from "@/i18n/get-dictionary";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { pageTitle } from "@/i18n/get-dictionary";
 import { TicketReplyForm } from "@/components/support/ticket-reply-form";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-export const metadata: Metadata = { title: "Support ticket" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; id: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "accountSupportTicket") };
+}
 
 export default async function TicketDetailPage({
   params,
@@ -16,7 +22,6 @@ export default async function TicketDetailPage({
   params: Promise<{ locale: string; id: string }>;
 }) {
   const { locale, id } = await params;
-  const t = getDictionary(locale);
   const user = await getCurrentUser();
   if (!user) return null;
 

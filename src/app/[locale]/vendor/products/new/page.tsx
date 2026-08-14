@@ -1,8 +1,15 @@
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { prisma } from "@/lib/prisma";
 import { ProductForm } from "@/components/vendor/product-form";
 
-export const metadata = { title: "Add product" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "vendorProductNew") };
+}
 
 export default async function NewProductPage({
   params,

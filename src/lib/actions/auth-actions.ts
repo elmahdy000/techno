@@ -30,16 +30,30 @@ export async function registerUser(locale: string, input: z.infer<typeof registe
   const passwordHash = await bcrypt.hash(parsed.password, 10);
   const role = parsed.becomeVendor ? "VENDOR" : "CUSTOMER";
 
-  const user = await prisma.user.create({
-    data: {
-      name: parsed.name,
-      email,
-      passwordHash,
-      phone: parsed.phone || null,
-      role: role as "CUSTOMER" | "VENDOR",
-      emailVerified: new Date(),
-    },
-  });
+  let user;
+  try {
+    user = await prisma.user.create({
+      data: {
+        name: parsed.name,
+        email,
+        passwordHash,
+        phone: parsed.phone || null,
+        role: role as "CUSTOMER" | "VENDOR",
+        emailVerified: new Date(),
+      },
+    });
+  } catch (err) {
+    // Unique email race: another request created the account first
+    if (
+      typeof err === "object" &&
+      err !== null &&
+      "code" in err &&
+      (err as { code: string }).code === "P2002"
+    ) {
+      return { ok: false, error: "registerError" };
+    }
+    throw err;
+  }
 
   if (parsed.becomeVendor) {
     await prisma.vendor.create({
@@ -72,15 +86,21 @@ export async function becomeVendor(locale: string) {
     redirect(link(locale, "/vendor"));
   }
 
-  await prisma.vendor.create({
-    data: {
-      userId: user.id,
-      name: `${user.name}'s Store`,
-      slug: `${slugify(user.name)}-store-${generateUniqueSuffix()}`,
-      email: user.email,
-      status: "PENDING",
-    },
-  });
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: user.id },
+      data: { role: "VENDOR" },
+    }),
+    prisma.vendor.create({
+      data: {
+        userId: user.id,
+        name: `${user.name}'s Store`,
+        slug: `${slugify(user.name)}-store-${generateUniqueSuffix()}`,
+        email: user.email,
+        status: "PENDING",
+      },
+    }),
+  ]);
 
   revalidatePath("/", "layout");
   return { ok: true };

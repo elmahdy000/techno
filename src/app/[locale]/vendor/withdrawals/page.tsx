@@ -1,11 +1,18 @@
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { getCurrentVendor } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { formatMoney } from "@/lib/money";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
-export const metadata = { title: "Withdrawals" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "vendorWithdrawals") };
+}
 
 const STATUS_KEY: Record<string, string> = {
   PENDING: "withdrawalPending",
@@ -49,7 +56,7 @@ export default async function VendorWithdrawalsPage({
       {withdrawals.length === 0 ? (
         <Card>
           <CardContent className="py-16 text-center text-sm text-muted-foreground">
-            {t.vendor.noOrders}
+            {t.vendor.noWithdrawals}
           </CardContent>
         </Card>
       ) : (
@@ -72,7 +79,7 @@ export default async function VendorWithdrawalsPage({
                         </p>
                       )}
                       {w.adminNote && (
-                        <p className="mt-1 text-xs text-muted-foreground">Note: {w.adminNote}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{t.common.note}: {w.adminNote}</p>
                       )}
                     </div>
                     <Badge variant={STATUS_VARIANT[w.status]}>

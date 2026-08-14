@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useI18n } from "@/i18n/client";
+import { getErrorMessage } from "@/i18n/errors";
 import { adjustInventory } from "@/lib/actions/vendor-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,7 +51,7 @@ export function AdjustStockDialog({
         setOpen(false);
         router.refresh();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : t.common.error);
+        toast.error(getErrorMessage(err, t));
       }
     });
   }
@@ -77,7 +78,7 @@ export function AdjustStockDialog({
               dir="ltr"
               value={delta}
               onChange={(e) => setDelta(e.target.value)}
-              placeholder="+10 or -3"
+              placeholder={t.vendor.stockDeltaPlaceholder}
             />
             <p className="text-xs text-muted-foreground">{t.common.details}</p>
           </div>
@@ -86,7 +87,7 @@ export function AdjustStockDialog({
             <Input
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="e.g. New stock received"
+              placeholder={t.vendor.stockReasonPlaceholder}
             />
           </div>
           <Button className="w-full" disabled={pending} onClick={submit}>

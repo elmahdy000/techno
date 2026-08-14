@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { AddressFormDialog } from "@/components/checkout/address-form-dialog";
@@ -7,7 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-export const metadata: Metadata = { title: "Addresses" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "accountAddresses") };
+}
 
 export default async function AddressesPage({
   params,
@@ -48,7 +55,7 @@ export default async function AddressesPage({
             <CardContent className="p-4 text-sm">
               <div className="flex items-start justify-between">
                 <p className="font-medium">{a.fullName}</p>
-                {a.isDefault && <Badge variant="success">Default</Badge>}
+                {a.isDefault && <Badge variant="success">{t.common.default}</Badge>}
               </div>
               <p className="mt-1 text-muted-foreground">{a.line1}</p>
               {a.line2 && <p className="text-muted-foreground">{a.line2}</p>}

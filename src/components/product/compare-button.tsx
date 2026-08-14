@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Scale } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useLocale } from "@/i18n/client";
+import { useLocale, useT } from "@/i18n/client";
 import { link } from "@/lib/links";
 import { cn } from "@/lib/utils";
 
@@ -30,8 +30,15 @@ export function CompareButton({
   className?: string;
 }) {
   const locale = useLocale();
+  const t = useT();
   const router = useRouter();
-  const [active, setActive] = useState(() => readCompare().includes(productId));
+  const [active, setActive] = useState(false);
+
+  // Read localStorage only on the client after hydration to avoid
+  // SSR/client HTML mismatch (React hydration error).
+  useEffect(() => {
+    setActive(readCompare().includes(productId));
+  }, [productId]);
 
   const toggle = useCallback(() => {
     const current = readCompare();
@@ -43,27 +50,28 @@ export function CompareButton({
         : [...current, productId];
 
     if (!isPresent && next === current) {
-      toast.error("Maximum 4 products");
+      toast.error(t.product.compareMax);
       return;
     }
 
     window.localStorage.setItem(KEY, JSON.stringify(next));
     setActive(!isPresent);
-    toast.success(isPresent ? "Removed from compare" : "Added to compare", {
+    toast.success(isPresent ? t.product.compareRemoved : t.common.compareAdded, {
       action: !isPresent
         ? {
-            label: "View",
+            label: t.common.view,
             onClick: () => router.push(link(locale, "/compare")),
           }
         : undefined,
     });
-  }, [productId, locale, router]);
+  }, [productId, locale, router, t]);
 
   return (
     <button
       type="button"
       onClick={toggle}
-      aria-label="Compare"
+      aria-label={active ? t.common.removeFromCompare : t.common.addToCompare}
+      aria-pressed={active}
       className={cn(
         "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border bg-background transition-colors hover:bg-accent",
         className,

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useI18n } from "@/i18n/client";
+import { getErrorMessage } from "@/i18n/errors";
 import { requestWithdrawal } from "@/lib/actions/vendor-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,7 +62,7 @@ export function WithdrawalDialog({
         setAmount("");
         router.refresh();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : t.common.error);
+        toast.error(getErrorMessage(err, t));
       }
     });
   }
@@ -99,9 +100,9 @@ export function WithdrawalDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="BANK_TRANSFER">Bank transfer</SelectItem>
-                <SelectItem value="INSTAPAY">InstaPay</SelectItem>
-                <SelectItem value="OTHER">Other</SelectItem>
+                <SelectItem value="BANK_TRANSFER">{t.vendor.methodBankTransfer}</SelectItem>
+                <SelectItem value="INSTAPAY">{t.vendor.methodInstapay}</SelectItem>
+                <SelectItem value="OTHER">{t.vendor.methodOther}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -112,7 +113,7 @@ export function WithdrawalDialog({
               rows={3}
               value={details}
               onChange={(e) => setDetails(e.target.value)}
-              placeholder="Bank: … / IBAN: … or InstaPay mobile number"
+              placeholder={t.vendor.accountDetailsPlaceholder}
             />
           </div>
           <div className="space-y-2">

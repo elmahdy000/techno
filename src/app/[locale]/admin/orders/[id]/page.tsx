@@ -2,16 +2,23 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Package, Truck } from "lucide-react";
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { prisma } from "@/lib/prisma";
 import { link } from "@/lib/links";
 import { formatMoney } from "@/lib/money";
-import { statusBadge, payStatusLabel } from "@/components/order/status";
+import { statusBadge, payStatusLabel, shippingStatusLabel } from "@/components/order/status";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
-export const metadata: Metadata = { title: "Admin order details" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; id: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "adminOrderDetails") };
+}
 
 export default async function AdminOrderDetailPage({
   params,
@@ -75,7 +82,9 @@ export default async function AdminOrderDetailPage({
         <div className="flex flex-wrap items-center gap-2">
           {statusBadge(order.status, t)}
           <Badge variant="outline">{payStatusLabel(order.paymentStatus, t)}</Badge>
-          <Badge variant="secondary">{order.paymentMethod}</Badge>
+          <Badge variant="secondary">
+            {order.paymentMethod === "COD" ? t.order.cod : t.order.card}
+          </Badge>
         </div>
       </div>
 
@@ -136,7 +145,7 @@ export default async function AdminOrderDetailPage({
                 {order.shipments.map((s) => (
                   <div key={s.id} className="rounded-lg border p-3 text-sm">
                     <div className="flex items-center justify-between">
-                      <Badge variant="secondary">{s.status}</Badge>
+                      <Badge variant="secondary">{shippingStatusLabel(s.status, t)}</Badge>
                       {s.trackingNumber && (
                         <span className="text-muted-foreground">
                           {s.trackingCarrier ? `${s.trackingCarrier} · ` : ""}

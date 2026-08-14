@@ -451,6 +451,8 @@ model Address {
   updatedAt  DateTime    @updatedAt
 
   @@index([userId])
+  // A user can have at most one default address
+  @@unique([userId, isDefault])
 }
 
 // ---------------------------------------------------------------------------

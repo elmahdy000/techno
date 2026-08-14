@@ -1,13 +1,21 @@
 import type { Metadata } from "next";
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { queryProducts, getBrands, getFacetAttributes } from "@/lib/catalog";
 import { ProductCard } from "@/components/product/product-card";
 import { CatalogFilters } from "@/components/catalog/filters";
 import { SortSelect } from "@/components/catalog/sort-select";
 import { Pagination } from "@/components/catalog/pagination";
 import { MobileFilters } from "@/components/catalog/mobile-filters";
+import { link } from "@/lib/links";
 
-export const metadata: Metadata = { title: "Catalog" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "catalog") };
+}
 
 const PAGE_SIZE = 24;
 
@@ -24,7 +32,12 @@ export default async function CatalogPage({
 
   const q = (sp.q as string) ?? "";
   const category = (sp.category as string) ?? "";
-  const brands = (sp.brand as string[] | undefined) ?? [];
+  const rawBrand = sp.brand;
+  const brandList = Array.isArray(rawBrand)
+    ? rawBrand.filter((b): b is string => typeof b === "string" && b.length > 0)
+    : typeof rawBrand === "string" && rawBrand
+      ? [rawBrand]
+      : [];
   const attrFilters: Record<string, string> = {};
   const facets = await getFacetAttributes(category || undefined);
   for (const f of facets) {
@@ -38,7 +51,7 @@ export default async function CatalogPage({
     queryProducts({
       q: q || undefined,
       categorySlug: category || undefined,
-      brands: Array.isArray(brands) && brands.length ? brands : undefined,
+      brands: brandList.length ? brandList : undefined,
       attrFilters,
       minPrice: sp.min ? Number(sp.min) : undefined,
       maxPrice: sp.max ? Number(sp.max) : undefined,
@@ -57,7 +70,7 @@ export default async function CatalogPage({
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">
-            {q ? `"${q}"` : category ? t.nav.catalog : t.nav.catalog}
+            {q ? `"${q}"` : t.nav.catalog}
           </h1>
           <p className="text-sm text-muted-foreground">
             {t.filters.results.replace("{count}", String(result.total))}
@@ -78,10 +91,16 @@ export default async function CatalogPage({
           {result.products.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-24 text-center">
               <p className="text-lg font-medium">{t.common.noResults}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{t.wishlist.emptyHint}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{t.filters.noResultsHint}</p>
+              <a
+                href={link(locale, "/catalog")}
+                className="mt-4 text-sm font-medium text-primary underline-offset-4 hover:underline"
+              >
+                {t.filters.clearFilters}
+              </a>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
               {result.products.map((p) => (
                 <ProductCard key={p.id} product={p} locale={locale} />
               ))}

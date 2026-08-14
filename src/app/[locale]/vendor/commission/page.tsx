@@ -1,4 +1,4 @@
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { getCurrentVendor } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { getDefaultCommissionRate, getVendorCommissionRate } from "@/lib/commerce";
@@ -13,7 +13,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-export const metadata = { title: "Commission" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "vendorCommission") };
+}
 
 export default async function VendorCommissionPage({
   params,
@@ -37,7 +44,6 @@ export default async function VendorCommissionPage({
 
   const rate = getVendorCommissionRate(vendor, defaultRate);
   const gross = items.reduce((a, i) => a + i.lineTotal, 0);
-  const commission = items.reduce((a, i) => a + i.commissionAmount, 0);
   const net = items.reduce((a, i) => a + i.vendorNet, 0);
 
   return (
@@ -79,7 +85,7 @@ export default async function VendorCommissionPage({
           <CardTitle className="text-base">{t.vendor.commissionBreakdown}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <Table>
+          <Table className="min-w-[640px]">
             <TableHeader>
               <TableRow>
                 <TableHead>{t.common.date}</TableHead>

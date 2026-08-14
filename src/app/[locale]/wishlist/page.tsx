@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { link } from "@/lib/links";
@@ -9,7 +9,14 @@ import { AddWishlistToCart } from "@/components/product/add-wishlist-to-cart";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
-export const metadata: Metadata = { title: "Wishlist" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "wishlist") };
+}
 
 export default async function WishlistPage({
   params,
@@ -50,7 +57,7 @@ export default async function WishlistPage({
           </Button>
         </div>
       ) : (
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
           {items.map((item) => (
             <ProductCard
               key={item.id}

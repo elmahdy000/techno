@@ -23,17 +23,21 @@ export function LoginForm() {
     e.preventDefault();
     setError(null);
     startTransition(async () => {
-      const res = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-      });
-      if (res?.error) {
+      try {
+        const res = await signIn("credentials", {
+          email,
+          password,
+          redirect: false,
+        });
+        if (res?.error) {
+          setError(t.auth.loginError);
+          return;
+        }
+        router.push(link(locale, "/"));
+        router.refresh();
+      } catch {
         setError(t.auth.loginError);
-        return;
       }
-      router.push(link(locale, "/"));
-      router.refresh();
     });
   }
 

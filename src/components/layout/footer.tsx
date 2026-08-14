@@ -45,7 +45,7 @@ export async function Footer({ locale }: { locale: Locale }) {
           <h3 className="text-sm font-semibold">{t.footer.help}</h3>
           <ul className="mt-3 space-y-2 text-sm">
             <li>
-              <Link href={link(locale, "/support")} className="text-muted-foreground hover:text-foreground">
+              <Link href={link(locale, "/account/support")} className="text-muted-foreground hover:text-foreground">
                 {t.nav.support}
               </Link>
             </li>

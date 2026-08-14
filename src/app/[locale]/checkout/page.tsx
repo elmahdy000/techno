@@ -2,12 +2,19 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { link } from "@/lib/links";
 import { computeOrderTotals } from "@/lib/commerce";
 import { CheckoutForm } from "@/components/checkout/checkout-form";
 
-export const metadata: Metadata = { title: "Checkout" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "checkout") };
+}
 
 export default async function CheckoutPage({
   params,

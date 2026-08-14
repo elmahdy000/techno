@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useI18n } from "@/i18n/client";
+import { getErrorMessage } from "@/i18n/errors";
 import { manageUser } from "@/lib/actions/admin-actions";
 import { Button } from "@/components/ui/button";
 
@@ -27,7 +28,7 @@ export function UserActionButton({
         toast.success(t.common.success);
         router.refresh();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : t.common.error);
+        toast.error(getErrorMessage(err, t));
       }
     });
   }
@@ -39,7 +40,7 @@ export function UserActionButton({
       disabled={pending}
       onClick={run}
     >
-      {active ? "Deactivate" : "Activate"}
+      {active ? t.vendor.deactivate : t.vendor.activate}
     </Button>
   );
 }

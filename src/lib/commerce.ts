@@ -1,21 +1,18 @@
+import { cache } from "react";
+import { randomBytes } from "node:crypto";
 import type { Vendor } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { percentOf, roundMoney } from "@/lib/money";
+import { percentOf } from "@/lib/money";
 
 export const FREE_SHIPPING_THRESHOLD_MINOR = 5_000_00; // free shipping over 5,000 EGP
 export const DEFAULT_SHIPPING_FEE_MINOR = 100_00;
 
-let cachedDefaultRate: number | null = null;
-
-export async function getDefaultCommissionRate(): Promise<number> {
-  if (cachedDefaultRate != null) return cachedDefaultRate;
+export const getDefaultCommissionRate = cache(async (): Promise<number> => {
   const row = await prisma.commissionConfig.findUnique({
     where: { key: "default_commission_rate" },
   });
-  const rate = row ? row.value : Number(process.env.DEFAULT_COMMISSION_RATE ?? 0.07);
-  cachedDefaultRate = rate;
-  return rate;
-}
+  return row ? row.value : Number(process.env.DEFAULT_COMMISSION_RATE ?? 0.07);
+});
 
 export function getVendorCommissionRate(
   vendor: Pick<Vendor, "commissionRate"> | null | undefined,
@@ -37,10 +34,12 @@ export function computeItemCommission(
 ): CommissionSnapshot {
   const lineTotal = unitPriceMinor * quantity;
   const commissionAmount = percentOf(lineTotal, rate);
+  // Both operands are integers in minor units, so the difference is exact:
+  // commissionAmount + vendorNet === lineTotal with no rounding drift.
   return {
     rate,
     commissionAmount,
-    vendorNet: roundMoney(lineTotal - commissionAmount),
+    vendorNet: lineTotal - commissionAmount,
   };
 }
 
@@ -66,7 +65,7 @@ export function computeOrderTotals(
       ? 0
       : DEFAULT_SHIPPING_FEE_MINOR;
   const taxRate = opts?.taxRate ?? 0;
-  const taxAmount = roundMoney((subtotal - discount) * taxRate);
+  const taxAmount = Math.round((subtotal - discount) * taxRate);
   const total = subtotal - discount + shippingFee + taxAmount;
   return { subtotal, shippingFee, discount, taxAmount, total };
 }
@@ -78,7 +77,7 @@ export function nextOrderNumber(): string {
     String(now.getMonth() + 1).padStart(2, "0"),
     String(now.getDate()).padStart(2, "0"),
   ].join("");
-  const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
+  const rand = randomBytes(3).toString("hex").toUpperCase();
   return `TM-${ymd}-${rand}`;
 }
 

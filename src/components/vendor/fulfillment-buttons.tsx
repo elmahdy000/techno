@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Truck } from "lucide-react";
 import { useI18n } from "@/i18n/client";
+import { getErrorMessage } from "@/i18n/errors";
 import { shipShipment, deliverShipment } from "@/lib/actions/vendor-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,7 +45,7 @@ export function ShipDialog({
         setOpen(false);
         router.refresh();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : t.common.error);
+        toast.error(getErrorMessage(err, t));
       }
     });
   }
@@ -69,7 +70,7 @@ export function ShipDialog({
               dir="ltr"
               value={carrier}
               onChange={(e) => setCarrier(e.target.value)}
-              placeholder="Aramex / DHL / Bosta"
+              placeholder={t.vendor.carrierPlaceholder}
             />
           </div>
           <div className="space-y-2">
@@ -78,7 +79,7 @@ export function ShipDialog({
               dir="ltr"
               value={tracking}
               onChange={(e) => setTracking(e.target.value)}
-              placeholder="Tracking number"
+              placeholder={t.vendor.trackingPlaceholder}
             />
           </div>
           <Button className="w-full" disabled={pending} onClick={submit}>
@@ -113,7 +114,7 @@ export function DeliverButton({
             toast.success(t.vendor.markDelivered);
             router.refresh();
           } catch (err) {
-            toast.error(err instanceof Error ? err.message : t.common.error);
+            toast.error(getErrorMessage(err, t));
           }
         })
       }

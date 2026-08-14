@@ -1,12 +1,20 @@
-import { getDictionary } from "@/i18n/get-dictionary";
+import { getDictionary, pageTitle } from "@/i18n/get-dictionary";
 import { getCurrentVendor } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { formatMoney } from "@/lib/money";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { DeliverButton, ShipDialog } from "@/components/vendor/fulfillment-buttons";
+import { shippingStatusLabel } from "@/components/order/status";
 
-export const metadata = { title: "Vendor orders" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  return { title: pageTitle(locale, "vendorOrders") };
+}
 
 export default async function VendorOrdersPage({
   params,
@@ -78,7 +86,7 @@ export default async function VendorOrdersPage({
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <p className="font-medium">#{s.order.orderNumber}</p>
-                    <Badge variant="secondary">{s.status}</Badge>
+                    <Badge variant="secondary">{shippingStatusLabel(s.status, t)}</Badge>
                     {s.trackingNumber && (
                       <Badge variant="outline" className="font-mono text-[10px]">
                         {s.trackingCarrier ? `${s.trackingCarrier}: ` : ""}
@@ -100,8 +108,8 @@ export default async function VendorOrdersPage({
                   </div>
                 </div>
 
-                <div className="mt-3 overflow-hidden rounded-md border">
-                  <table className="w-full text-sm">
+                <div className="mt-3 overflow-x-auto rounded-md border">
+                  <table className="w-full min-w-[480px] text-sm">
                     <thead className="bg-muted/50 text-xs text-muted-foreground">
                       <tr>
                         <th className="px-3 py-2 text-start">{t.common.name}</th>

@@ -28,6 +28,58 @@ export function statusBadge(status: OrderStatus, t: Dictionary, size?: "sm" | "m
   );
 }
 
+const SHIPPING_STATUS_LABEL: Record<ShippingStatus, keyof Dictionary["order"]> = {
+  PENDING: "statusPending",
+  PICKED: "statusPicked",
+  SHIPPED: "statusShipped",
+  DELIVERED: "statusDelivered",
+};
+
+export function shippingStatusLabel(status: ShippingStatus, t: Dictionary) {
+  return t.order[SHIPPING_STATUS_LABEL[status]] ?? status;
+}
+
+const VENDOR_STATUS_LABEL: Record<string, keyof Dictionary["vendor"]> = {
+  PENDING: "statusPending",
+  APPROVED: "statusApproved",
+  SUSPENDED: "statusSuspended",
+  REJECTED: "statusRejected",
+};
+
+export function vendorStatusLabel(status: string, t: Dictionary) {
+  return VENDOR_STATUS_LABEL[status]
+    ? t.vendor[VENDOR_STATUS_LABEL[status]]
+    : status;
+}
+
+const WITHDRAWAL_STATUS_LABEL: Record<string, keyof Dictionary["vendor"]> = {
+  PENDING: "withdrawalPending",
+  APPROVED: "withdrawalApproved",
+  PROCESSING: "withdrawalProcessing",
+  PAID: "withdrawalPaid",
+  REJECTED: "withdrawalRejected",
+  CANCELLED: "withdrawalCancelled",
+};
+
+export function withdrawalStatusLabel(status: string, t: Dictionary) {
+  return WITHDRAWAL_STATUS_LABEL[status]
+    ? t.vendor[WITHDRAWAL_STATUS_LABEL[status]]
+    : status;
+}
+
+const PRODUCT_STATUS_LABEL: Record<string, keyof Dictionary["vendor"]> = {
+  DRAFT: "productStatusDraft",
+  ACTIVE: "productStatusActive",
+  INACTIVE: "productStatusInactive",
+  ARCHIVED: "productStatusArchived",
+};
+
+export function productStatusLabel(status: string, t: Dictionary) {
+  return PRODUCT_STATUS_LABEL[status]
+    ? t.vendor[PRODUCT_STATUS_LABEL[status]]
+    : status;
+}
+
 export function payStatusLabel(status: string, t: Dictionary) {
   const map: Record<string, string> = {
     UNPAID: t.order.payPending,
